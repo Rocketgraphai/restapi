@@ -237,7 +237,6 @@ temp/
 
 # Environment files
 .env.local
-.env.development
 .env.staging
 .env.production
 

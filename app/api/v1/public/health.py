@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Dict, Optional
 import time
+import sys
 import asyncio
 from datetime import datetime, timezone
 
@@ -200,18 +201,104 @@ async def liveness_check():
 @router.get("/version")
 async def version_info():
     """
-    Get API version information.
+    Get comprehensive version information for all system components.
     
-    Returns basic version and build information for the API.
+    Returns version information for the API, XGT server, and SDK components.
+    This is essential for debugging compatibility issues and system monitoring.
     
     Returns:
-        Version information
+        Comprehensive version information including:
+        - API version and environment
+        - XGT server version and protocol
+        - XGT SDK version and client protocol
+        - System uptime and build information
     """
     settings = get_settings()
     
-    return {
-        "name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-        "environment": settings.ENVIRONMENT,
-        "uptime_seconds": time.time() - _start_time
+    # Initialize version response
+    version_info = {
+        "api": {
+            "name": settings.APP_NAME,
+            "version": settings.APP_VERSION,
+            "environment": settings.ENVIRONMENT,
+            "uptime_seconds": time.time() - _start_time,
+            "build_timestamp": datetime.now(timezone.utc).isoformat()
+        },
+        "xgt": {
+            "server_version": None,
+            "server_protocol": None,
+            "sdk_version": None,
+            "client_protocol": None,
+            "connection_status": "disconnected"
+        },
+        "system": {
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": sys.platform
+        }
     }
+    
+    # Try to get XGT version information
+    try:
+        import xgt
+        
+        # Get SDK version and client protocol
+        sdk_version = xgt.__version__
+        
+        # Get client protocol from SDK
+        import xgt.connection
+        client_protocol = xgt.connection.__protobuf_version__
+        
+        version_info["xgt"]["sdk_version"] = sdk_version
+        version_info["xgt"]["client_protocol"] = client_protocol
+        
+        # Try to connect to get server information
+        try:
+            auth = xgt.BasicAuth(
+                username=settings.XGT_USERNAME,
+                password=settings.XGT_PASSWORD
+            )
+            
+            conn_flags = {}
+            if settings.XGT_USE_SSL:
+                conn_flags = {
+                    'ssl': True,
+                    'ssl_server_cert': settings.XGT_SSL_CERT,
+                    'ssl_server_cn': settings.XGT_SERVER_CN
+                }
+            
+            connection = xgt.Connection(
+                host=settings.XGT_HOST,
+                port=settings.XGT_PORT,
+                auth=auth,
+                flags=conn_flags
+            )
+            
+            # Get server version and protocol
+            server_version = connection.server_version
+            server_protocol = connection.server_protocol
+            
+            version_info["xgt"]["server_version"] = server_version
+            version_info["xgt"]["server_protocol"] = server_protocol
+            version_info["xgt"]["connection_status"] = "connected"
+            
+            # Add compatibility check
+            if server_protocol and client_protocol and len(server_protocol) >= 2 and len(client_protocol) >= 2:
+                protocol_compatible = server_protocol >= client_protocol
+                version_info["xgt"]["protocol_compatible"] = protocol_compatible
+                if not protocol_compatible:
+                    version_info["xgt"]["compatibility_warning"] = f"Server protocol {server_protocol} < Client protocol {client_protocol}"
+            
+            connection.close()
+            
+        except Exception as conn_error:
+            version_info["xgt"]["connection_status"] = "error"
+            version_info["xgt"]["connection_error"] = str(conn_error)
+            
+    except ImportError:
+        version_info["xgt"]["connection_status"] = "sdk_not_available"
+        version_info["xgt"]["error"] = "XGT SDK not installed"
+    except Exception as sdk_error:
+        version_info["xgt"]["connection_status"] = "sdk_error"
+        version_info["xgt"]["error"] = str(sdk_error)
+    
+    return version_info

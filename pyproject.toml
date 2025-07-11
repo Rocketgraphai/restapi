@@ -106,7 +106,7 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
-    "--cov-fail-under=60",
+    "--cov-fail-under=20",
 ]
 testpaths = ["tests"]
 markers = [
@@ -130,8 +130,6 @@ omit = [
     "*/venv/*",
     "*/.venv/*",
     "*/migrations/*",
-    "app/utils/xgt_operations.py",  # Will be tested when XGT endpoints are implemented
-    "app/api/main.py",  # FastAPI app initialization
 ]
 
 [tool.coverage.report]

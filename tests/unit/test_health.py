@@ -367,23 +367,60 @@ class TestVersionEndpoint:
 
     @patch('app.api.v1.public.health.get_settings')
     def test_version_info_success(self, mock_get_settings, client):
-        """Test successful version info retrieval."""
+        """Test successful version info retrieval with comprehensive version data."""
         mock_settings = Mock()
         mock_settings.APP_NAME = "RocketGraph Public API"
         mock_settings.APP_VERSION = "1.0.0"
         mock_settings.ENVIRONMENT = "test"
+        mock_settings.XGT_USERNAME = "admin"
+        mock_settings.XGT_PASSWORD = "password"
+        mock_settings.XGT_USE_SSL = False
+        mock_settings.XGT_HOST = "localhost"
+        mock_settings.XGT_PORT = 4367
         mock_get_settings.return_value = mock_settings
         
-        response = client.get("/api/v1/public/version")
+        # Mock XGT for version endpoint
+        mock_xgt = Mock()
+        mock_connection = Mock()
+        mock_connection.server_version = "2.3.1"
+        mock_connection.server_protocol = (1, 1, 0)
+        mock_xgt.Connection.return_value = mock_connection
+        mock_xgt.BasicAuth.return_value = Mock()
+        mock_xgt.__version__ = "2.3.0"
+        
+        # Mock connection module
+        mock_xgt_connection = Mock()
+        mock_xgt_connection.__protobuf_version__ = (1, 1, 0)
+        mock_xgt.connection = mock_xgt_connection
+        
+        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+            response = client.get("/api/v1/public/version")
         
         assert response.status_code == 200
         data = response.json()
         
-        assert data["name"] == "RocketGraph Public API"
-        assert data["version"] == "1.0.0"
-        assert data["environment"] == "test"  # Uses mocked settings
-        assert "uptime_seconds" in data
-        assert isinstance(data["uptime_seconds"], float)
+        # Check API version info
+        assert "api" in data
+        assert data["api"]["name"] == "RocketGraph Public API"
+        assert data["api"]["version"] == "1.0.0"
+        assert data["api"]["environment"] == "test"
+        assert "uptime_seconds" in data["api"]
+        assert isinstance(data["api"]["uptime_seconds"], float)
+        assert "build_timestamp" in data["api"]
+        
+        # Check XGT version info
+        assert "xgt" in data
+        assert data["xgt"]["server_version"] == "2.3.1"
+        assert data["xgt"]["server_protocol"] == [1, 1, 0]
+        assert data["xgt"]["sdk_version"] == "2.3.0"
+        assert data["xgt"]["client_protocol"] == [1, 1, 0]
+        assert data["xgt"]["connection_status"] == "connected"
+        assert data["xgt"]["protocol_compatible"] is True
+        
+        # Check system info
+        assert "system" in data
+        assert "python_version" in data["system"]
+        assert "platform" in data["system"]
 
     def test_version_info_response_structure(self, client):
         """Test version info response structure."""
@@ -392,14 +429,44 @@ class TestVersionEndpoint:
         assert response.status_code == 200
         data = response.json()
         
-        # Check required fields
-        required_fields = ["name", "version", "environment", "uptime_seconds"]
-        for field in required_fields:
-            assert field in data
+        # Check top-level structure
+        required_sections = ["api", "xgt", "system"]
+        for section in required_sections:
+            assert section in data
+        
+        # Check API section
+        api_fields = ["name", "version", "environment", "uptime_seconds", "build_timestamp"]
+        for field in api_fields:
+            assert field in data["api"]
+        
+        # Check XGT section (basic structure)
+        xgt_fields = ["server_version", "server_protocol", "sdk_version", "client_protocol", "connection_status"]
+        for field in xgt_fields:
+            assert field in data["xgt"]
+        
+        # Check system section
+        system_fields = ["python_version", "platform"]
+        for field in system_fields:
+            assert field in data["system"]
         
         # Check data types
-        assert isinstance(data["uptime_seconds"], float)
-        assert data["uptime_seconds"] >= 0
+        assert isinstance(data["api"]["uptime_seconds"], float)
+        assert data["api"]["uptime_seconds"] >= 0
+
+    def test_version_info_xgt_unavailable(self, client):
+        """Test version info when XGT is not available."""
+        response = client.get("/api/v1/public/version")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Should still return structure with XGT unavailable
+        assert "api" in data
+        assert "xgt" in data
+        assert "system" in data
+        
+        # XGT should show as unavailable
+        assert data["xgt"]["connection_status"] in ["sdk_not_available", "error", "disconnected"]
 
 
 class TestHealthEndpointIntegration:

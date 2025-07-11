@@ -41,9 +41,16 @@ The RocketGraph Public API is designed as a separate service from the desktop ap
    ```
 
 4. **Configure environment**
+
+   **Option A: Quick Development Setup**
+   ```bash
+   cp .env.development .env
+   ```
+
+   **Option B: Full Configuration**
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Edit .env with your specific settings
    ```
 
 5. **Run the application**
@@ -57,6 +64,21 @@ The API will be available at:
 - **API Base URL**: http://localhost:8000/api/v1/public/
 - **Health Check**: http://localhost:8000/api/v1/public/health
 - **API Documentation**: http://localhost:8000/docs (development only)
+
+### Development Workflow
+
+**Auto-reload:** When `DEBUG=true` in your `.env` file, the server automatically reloads on code changes.
+
+**Testing in Browser:**
+- Visit http://localhost:8000/docs for interactive API testing (Swagger UI)
+- Visit individual endpoints directly for GET requests
+- Use browser developer tools to inspect responses
+
+**Alternative Development Server:**
+```bash
+# Manual control with uvicorn
+uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
+```
 
 ## API Documentation
 
@@ -72,9 +94,16 @@ Comprehensive API documentation is available in the `docs/` directory:
 
 ## Configuration
 
+### Environment Files
+
+The project provides two environment templates:
+
+- **`.env.development`** - Minimal configuration for quick local development
+- **`.env.example`** - Complete configuration template with all available options
+
 ### Environment Variables
 
-Key configuration options (see `.env.example` for complete list):
+Key configuration options:
 
 ```bash
 # Security (REQUIRED)
