@@ -25,14 +25,24 @@ import logging
 try:
     import xgt
     from xgt import GraphTypesService_pb2 as graph_proto
-    from xgt_connector import (ODBCConnector, SQLODBCDriver, MongoODBCDriver,
-                               OracleODBCDriver, SAPODBCDriver,
-                               SnowflakeODBCDriver)
-    from arrow_odbc.connect import connect_to_database
 except ImportError:
     # Handle gracefully for development
     xgt = None
+    graph_proto = None
     print("Warning: XGT not available - install xgt package for full functionality")
+
+# Optional XGT connector imports (may have architecture dependencies)
+# TODO: Re-enable when compatible XGT connector is available
+# try:
+#     from xgt_connector import (ODBCConnector, SQLODBCDriver, MongoODBCDriver,
+#                                OracleODBCDriver, SAPODBCDriver,
+#                                SnowflakeODBCDriver)
+#     from arrow_odbc.connect import connect_to_database
+#     XGT_CONNECTOR_AVAILABLE = True
+# except ImportError as e:
+#     # Handle gracefully - these are only needed for some operations
+#     print(f"Warning: XGT connector not available - {e}")
+XGT_CONNECTOR_AVAILABLE = False
 
 from ..config.app_config import get_settings
 from .exceptions import (

@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 from ..config.app_config import get_settings
 from ..utils.exceptions import BaseAPIException
-from .v1.public import health
+from .v1.public import health, datasets
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -159,6 +159,12 @@ def create_app() -> FastAPI:
         health.router,
         prefix="/api/v1/public",
         tags=["health"]
+    )
+    
+    app.include_router(
+        datasets.router,
+        prefix="/api/v1/public",
+        tags=["datasets"]
     )
     
     return app
