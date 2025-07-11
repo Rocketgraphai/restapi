@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
+*.py[cod]
 *$py.class
 
 # C extensions
@@ -205,3 +205,54 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# API-specific
+logs/
+metrics/
+traces/
+uploads/
+downloads/
+
+# Security & Secrets
+config/secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Database
+*.db
+*.sqlite
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Environment files
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# Backup files
+*.bak
+*.backup
+backup/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Claude AI
+.claude/
+
+# macOS
+.DS_Store
+.DS_Store?

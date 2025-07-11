@@ -1,0 +1,249 @@
+# RocketGraph Public API
+
+A secure, scalable REST API for graph database operations using XGT. Provides multi-tenant access to graph analytics capabilities with enterprise-grade security and monitoring.
+
+## Overview
+
+The RocketGraph Public API is designed as a separate service from the desktop application, providing:
+
+- **Secure API Key Authentication** - Bearer token authentication with scoped access
+- **Multi-tenant Support** - Organization-based resource isolation  
+- **Enterprise Security** - Rate limiting, audit logging, and comprehensive monitoring
+- **Graph Database Operations** - Full access to XGT graph database functionality
+- **RESTful Design** - Standard HTTP methods with JSON payloads
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- XGT Graph Database
+- MongoDB (for API metadata)
+- Redis (for caching and rate limiting)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd public-api
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements/development.txt
+   ```
+
+4. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. **Run the application**
+   ```bash
+   python main.py
+   ```
+
+### Development Server
+
+The API will be available at:
+- **API Base URL**: http://localhost:8000/api/v1/public/
+- **Health Check**: http://localhost:8000/api/v1/public/health
+- **API Documentation**: http://localhost:8000/docs (development only)
+
+## API Documentation
+
+Comprehensive API documentation is available in the `docs/` directory:
+
+- **[Architecture Overview](docs/architecture-overview.md)** - System design and deployment options
+- **[Authentication Strategy](docs/authentication-strategy.md)** - API key management and security  
+- **[API Design](docs/api-design.md)** - Endpoint specifications and usage patterns
+- **[Security Guidelines](docs/security-guidelines.md)** - Security best practices
+- **[Deployment Guide](docs/deployment-guide.md)** - Production deployment instructions
+- **[Rate Limiting](docs/rate-limiting.md)** - Rate limiting strategies
+- **[Monitoring & Auditing](docs/monitoring-auditing.md)** - Observability and compliance
+
+## Configuration
+
+### Environment Variables
+
+Key configuration options (see `.env.example` for complete list):
+
+```bash
+# Security (REQUIRED)
+SECRET_KEY=your-super-secure-secret-key
+API_KEY_SALT=your-api-key-salt
+
+# XGT Database
+XGT_HOST=localhost
+XGT_PORT=4367
+XGT_USERNAME=admin
+XGT_PASSWORD=your-password
+
+# MongoDB for API metadata
+MONGODB_URI=mongodb://localhost:27017/rocketgraph_api
+
+# Redis for caching/rate limiting  
+REDIS_URL=redis://localhost:6379
+```
+
+### Rate Limiting Tiers
+
+The API supports multiple rate limiting tiers:
+
+- **Free**: 100 req/min, 1K req/hour, 10K req/day
+- **Basic**: 500 req/min, 10K req/hour, 100K req/day  
+- **Premium**: 1K req/min, 50K req/hour, 1M req/day
+- **Enterprise**: 5K req/min, 200K req/hour, 10M req/day
+
+## Project Structure
+
+```
+public-api/
+├── app/                     # Main application code
+│   ├── api/v1/public/      # Public API endpoints
+│   ├── auth/               # Authentication & authorization
+│   ├── middleware/         # Request middleware
+│   ├── models/             # Data models
+│   ├── utils/              # Utility functions
+│   └── config/             # Configuration management
+├── tests/                  # Test suites
+├── deploy/                 # Deployment configurations
+├── docs/                   # Documentation
+└── requirements/           # Python dependencies
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Unit tests
+pytest tests/unit/
+
+# Integration tests  
+pytest tests/integration/
+
+# Security tests
+pytest tests/security/
+
+# All tests with coverage
+pytest --cov=app tests/
+```
+
+### Code Quality
+
+```bash
+# Format code
+black app/ tests/
+
+# Sort imports
+isort app/ tests/
+
+# Lint code
+flake8 app/ tests/
+
+# Type checking
+mypy app/
+```
+
+### Docker Development
+
+```bash
+# Build development image
+docker build -f deploy/docker/Dockerfile.dev -t rocketgraph-api:dev .
+
+# Run with Docker Compose
+docker-compose -f deploy/docker/docker-compose.yml up
+```
+
+## Deployment
+
+### Production Deployment
+
+For production deployment, see the comprehensive [Deployment Guide](docs/deployment-guide.md).
+
+### Quick Docker Deployment
+
+```bash
+# Production build
+docker build -f deploy/docker/Dockerfile -t rocketgraph-api:prod .
+
+# Run production container
+docker run -d \
+  --name rocketgraph-api \
+  -p 8000:8000 \
+  --env-file .env \
+  rocketgraph-api:prod
+```
+
+### Kubernetes Deployment
+
+```bash
+# Apply Kubernetes manifests
+kubectl apply -f deploy/kubernetes/
+```
+
+## Security
+
+### API Key Authentication
+
+All API requests require a valid API key in the Authorization header:
+
+```bash
+curl -H "Authorization: Bearer rg_live_your_api_key_here" \
+  https://api.rocketgraph.com/api/v1/public/datasets
+```
+
+### Security Features
+
+- **Multi-layer rate limiting** - Network, application, and user-level
+- **Input validation** - Comprehensive request validation and sanitization
+- **Audit logging** - Complete audit trail for compliance
+- **Encryption** - All data encrypted in transit and at rest
+- **Network security** - WAF, DDoS protection, geographic restrictions
+
+## Monitoring
+
+### Health Checks
+
+- **Health**: `/api/v1/public/health` - Detailed system health
+- **Readiness**: `/api/v1/public/ready` - Kubernetes readiness probe
+- **Liveness**: `/api/v1/public/live` - Kubernetes liveness probe
+
+### Metrics
+
+Prometheus metrics available at `:9090/metrics` (configurable):
+
+- Request rates and latencies
+- Error rates by endpoint
+- Rate limiting violations  
+- Business metrics (queries, datasets, etc.)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+## License
+
+Copyright 2024-2025 Trovares Inc. dba Rocketgraph. All rights reserved.
+
+## Support
+
+- **Documentation**: See `docs/` directory
+- **Issues**: Open an issue in the repository
+- **Security**: Report security issues privately to security@rocketgraph.com
