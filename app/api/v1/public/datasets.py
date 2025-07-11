@@ -80,23 +80,10 @@ class DatasetsResponse(BaseModel):
     """Response for datasets listing."""
     datasets: List[DatasetInfo] = Field(..., description="Available datasets")
     total_count: int = Field(..., description="Total number of datasets")
-    organization_id: str = Field(..., description="Organization ID for scoped access")
-
-
-# For now, we'll use a placeholder organization ID
-# In a real implementation, this would come from authentication
-def get_organization_id() -> str:
-    """Get organization ID from authentication context.
-    
-    TODO: Replace with actual authentication mechanism.
-    For now, returns a default organization ID.
-    """
-    return "default_org"
 
 
 @router.get("/datasets", response_model=DatasetsResponse)
 async def list_datasets(
-    organization_id: str = Depends(get_organization_id),
     include_empty: bool = Query(
         default=False, 
         description="Include datasets with no frames"
@@ -118,10 +105,10 @@ async def list_datasets(
         HTTPException: If XGT connection fails or operation errors occur
     """
     try:
-        logger.info(f"Listing datasets for organization: {organization_id}")
+        logger.info("Listing datasets from XGT server")
         
-        # Create XGT operations instance for this organization
-        xgt_ops = create_xgt_operations(organization_id)
+        # Create XGT operations instance
+        xgt_ops = create_xgt_operations()
         
         # Get datasets information from XGT
         datasets_raw = xgt_ops.datasets_info()
@@ -166,12 +153,11 @@ async def list_datasets(
                 edges=edges
             ))
         
-        logger.info(f"Found {len(datasets)} datasets for organization {organization_id}")
+        logger.info(f"Found {len(datasets)} datasets")
         
         return DatasetsResponse(
             datasets=datasets,
-            total_count=len(datasets),
-            organization_id=organization_id
+            total_count=len(datasets)
         )
         
     except XGTConnectionError as e:
@@ -208,8 +194,7 @@ async def list_datasets(
 
 @router.get("/datasets/{dataset_name}", response_model=DatasetInfo)
 async def get_dataset_info(
-    dataset_name: str,
-    organization_id: str = Depends(get_organization_id)
+    dataset_name: str
 ):
     """
     Get detailed information about a specific dataset.
@@ -227,10 +212,10 @@ async def get_dataset_info(
         HTTPException: If dataset not found or XGT operation fails
     """
     try:
-        logger.info(f"Getting dataset info for: {dataset_name} (org: {organization_id})")
+        logger.info(f"Getting dataset info for: {dataset_name}")
         
         # Create XGT operations instance
-        xgt_ops = create_xgt_operations(organization_id)
+        xgt_ops = create_xgt_operations()
         
         # Get specific dataset information
         datasets_raw = xgt_ops.datasets_info(dataset_name=dataset_name)
@@ -241,7 +226,7 @@ async def get_dataset_info(
                 detail={
                     "error": "DATASET_NOT_FOUND",
                     "message": f"Dataset '{dataset_name}' not found",
-                    "details": f"No dataset named '{dataset_name}' exists for organization '{organization_id}'"
+                    "details": f"No dataset named '{dataset_name}' exists"
                 }
             )
         

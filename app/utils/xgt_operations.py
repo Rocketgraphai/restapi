@@ -69,14 +69,12 @@ class XGTOperations:
     without relying on Flask sessions or user profiles.
     """
     
-    def __init__(self, organization_id: str):
+    def __init__(self):
         """
-        Initialize XGT operations for a specific organization.
+        Initialize XGT operations.
         
-        Args:
-            organization_id: The organization ID for scoping operations
+        Uses XGT's authentication-based access control and namespacing.
         """
-        self.organization_id = organization_id
         self.settings = get_settings()
         
         # INTO pattern for query validation (from original)
@@ -93,13 +91,11 @@ class XGTOperations:
             re.VERBOSE
         )
     
-    def _get_namespace(self) -> str:
-        """Get the namespace for this organization."""
-        return f"org_{self.organization_id}"
+    # Removed _get_namespace() - XGT handles namespacing via authentication
     
     def _create_connection(self) -> 'xgt.Connection':
         """
-        Create a new XGT connection for this organization.
+        Create a new XGT connection.
         
         Returns:
             XGT connection object
@@ -136,13 +132,14 @@ class XGTOperations:
                 flags=conn_flags
             )
             
-            # Set namespace for organization isolation
-            connection.set_default_namespace(self._get_namespace())
+            # Let XGT set the default namespace based on authentication
+            # The default namespace is determined by the authenticated username
+            logger.debug(f"Connected to XGT - using authentication-based default namespace")
             
             return connection
             
         except Exception as e:
-            logger.error(f"Failed to create XGT connection for org {self.organization_id}: {e}")
+            logger.error(f"Failed to create XGT connection: {e}")
             if "Connection refused" in str(e):
                 raise XGTConnectionError("Cannot connect to XGT server - ensure XGT is running and accessible")
             raise XGTConnectionError(f"Connection failed: {str(e)}")
@@ -416,13 +413,17 @@ class XGTOperations:
         try:
             with self.connection() as conn:
                 if dataset_name is None:
-                    # Get all namespaces accessible to this organization
-                    org_namespace = self._get_namespace()
-                    ds_names = [org_namespace]  # Only return org's own namespace
+                    # Get all namespaces accessible to the authenticated user
+                    try:
+                        # Try to get list of accessible namespaces
+                        available_namespaces = conn.get_namespaces()
+                        ds_names = available_namespaces
+                    except (AttributeError, Exception):
+                        # Fallback: use default namespace if get_namespaces() not available
+                        default_ns = conn.get_default_namespace()
+                        ds_names = [default_ns] if default_ns else [""]
                 else:
-                    # Ensure dataset belongs to this organization
-                    if not dataset_name.startswith(self._get_namespace()):
-                        dataset_name = f"{self._get_namespace()}__{dataset_name}"
+                    # Use the specific dataset name as provided
                     ds_names = [dataset_name]
                 
                 datasets = []
@@ -471,8 +472,7 @@ class XGTOperations:
             with self.connection() as conn:
                 footprint = conn.get_server_memory_usage()
                 return {
-                    'memory_usage': footprint,
-                    'organization_id': self.organization_id
+                    'memory_usage': footprint
                 }
         except Exception as e:
             logger.error(f"Failed to get memory footprint: {e}")
@@ -500,8 +500,6 @@ class XGTOperations:
                 
                 # Set namespace if dataset specified
                 if dataset_name:
-                    if not dataset_name.startswith(self._get_namespace()):
-                        dataset_name = f"{self._get_namespace()}__{dataset_name}"
                     conn.set_default_namespace(dataset_name)
                 
                 # Run query
@@ -592,14 +590,11 @@ class XGTOperations:
 
 
 # Factory function for creating XGT operations
-def create_xgt_operations(organization_id: str) -> XGTOperations:
+def create_xgt_operations() -> XGTOperations:
     """
-    Factory function to create XGT operations for an organization.
+    Factory function to create XGT operations.
     
-    Args:
-        organization_id: Organization ID
-        
     Returns:
         XGTOperations instance
     """
-    return XGTOperations(organization_id)
+    return XGTOperations()

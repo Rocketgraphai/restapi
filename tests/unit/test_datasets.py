@@ -59,7 +59,7 @@ class TestDatasetsEndpoint:
         
         assert "datasets" in data
         assert "total_count" in data
-        assert "organization_id" in data
+        # organization_id removed - XGT handles access control via authentication
         assert data["total_count"] == 1
         assert len(data["datasets"]) == 1
         
