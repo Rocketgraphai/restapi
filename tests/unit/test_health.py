@@ -381,7 +381,7 @@ class TestVersionEndpoint:
         
         assert data["name"] == "RocketGraph Public API"
         assert data["version"] == "1.0.0"
-        assert data["environment"] == "development"  # Uses actual settings, not mock
+        assert data["environment"] == "test"  # Uses mocked settings
         assert "uptime_seconds" in data
         assert isinstance(data["uptime_seconds"], float)
 
