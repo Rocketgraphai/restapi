@@ -4,14 +4,15 @@ Dataset discovery endpoints for the RocketGraph Public API.
 Provides read-only access to discover available datasets and their metadata.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 import logging
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from ....config.app_config import get_settings
-from ....utils.xgt_operations import create_xgt_operations
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
+from ....utils.xgt_operations import create_xgt_operations
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class DatasetFrameInfo(BaseModel):
     """Information about a frame (vertex or edge) in a dataset."""
     name: str = Field(..., description="Frame name")
-    schema: List[List[Any]] = Field(..., description="Frame schema definition")
+    schema: list[list[Any]] = Field(..., description="Frame schema definition")
     num_rows: int = Field(..., description="Number of rows in the frame")
     create_rows: bool = Field(..., description="Whether user can create rows")
     delete_frame: bool = Field(..., description="Whether user can delete frame")
@@ -42,9 +43,9 @@ class EdgeFrameInfo(DatasetFrameInfo):
 class DatasetInfo(BaseModel):
     """Information about a dataset (namespace)."""
     name: str = Field(..., description="Dataset name")
-    vertices: List[VertexFrameInfo] = Field(..., description="Vertex frames in the dataset")
-    edges: List[EdgeFrameInfo] = Field(..., description="Edge frames in the dataset")
-    
+    vertices: list[VertexFrameInfo] = Field(..., description="Vertex frames in the dataset")
+    edges: list[EdgeFrameInfo] = Field(..., description="Edge frames in the dataset")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -68,7 +69,7 @@ class DatasetInfo(BaseModel):
                         "delete_frame": False,
                         "source_frame": "users",
                         "source_key": "id",
-                        "target_frame": "users", 
+                        "target_frame": "users",
                         "target_key": "id"
                     }
                 ]
@@ -78,48 +79,48 @@ class DatasetInfo(BaseModel):
 
 class DatasetsResponse(BaseModel):
     """Response for datasets listing."""
-    datasets: List[DatasetInfo] = Field(..., description="Available datasets")
+    datasets: list[DatasetInfo] = Field(..., description="Available datasets")
     total_count: int = Field(..., description="Total number of datasets")
 
 
 @router.get("/datasets", response_model=DatasetsResponse)
 async def list_datasets(
     include_empty: bool = Query(
-        default=False, 
+        default=False,
         description="Include datasets with no frames"
     )
 ):
     """
     List all datasets available to the organization.
-    
+
     Returns metadata about datasets (namespaces) that contain graph data.
     Each dataset contains vertex frames (nodes) and edge frames (relationships).
-    
+
     Args:
         include_empty: Whether to include datasets that have no frames
-        
+
     Returns:
         List of datasets with their frame information
-        
+
     Raises:
         HTTPException: If XGT connection fails or operation errors occur
     """
     try:
         logger.info("Listing datasets from XGT server")
-        
+
         # Create XGT operations instance
         xgt_ops = create_xgt_operations()
-        
+
         # Get datasets information from XGT
         datasets_raw = xgt_ops.datasets_info()
-        
+
         # Transform the raw data into our response format
         datasets = []
         for dataset_raw in datasets_raw:
             # Skip empty datasets if not requested
             if not include_empty and not dataset_raw.get('vertices') and not dataset_raw.get('edges'):
                 continue
-            
+
             # Convert vertex frames
             vertices = []
             for vertex_raw in dataset_raw.get('vertices', []):
@@ -131,7 +132,7 @@ async def list_datasets(
                     delete_frame=vertex_raw['delete_frame'],
                     key=vertex_raw['key']
                 ))
-            
+
             # Convert edge frames
             edges = []
             for edge_raw in dataset_raw.get('edges', []):
@@ -146,20 +147,20 @@ async def list_datasets(
                     target_frame=edge_raw['target_frame'],
                     target_key=edge_raw['target_key']
                 ))
-            
+
             datasets.append(DatasetInfo(
                 name=dataset_raw['name'],
                 vertices=vertices,
                 edges=edges
             ))
-        
+
         logger.info(f"Found {len(datasets)} datasets")
-        
+
         return DatasetsResponse(
             datasets=datasets,
             total_count=len(datasets)
         )
-        
+
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
         raise HTTPException(
@@ -175,7 +176,7 @@ async def list_datasets(
         raise HTTPException(
             status_code=500,
             detail={
-                "error": "XGT_OPERATION_ERROR", 
+                "error": "XGT_OPERATION_ERROR",
                 "message": "Failed to retrieve datasets",
                 "details": str(e)
             }
@@ -198,28 +199,28 @@ async def get_dataset_info(
 ):
     """
     Get detailed information about a specific dataset.
-    
+
     Returns comprehensive metadata about a dataset including all vertex and edge frames,
     their schemas, row counts, and permissions.
-    
+
     Args:
         dataset_name: Name of the dataset to retrieve
-        
+
     Returns:
         Detailed dataset information
-        
+
     Raises:
         HTTPException: If dataset not found or XGT operation fails
     """
     try:
         logger.info(f"Getting dataset info for: {dataset_name}")
-        
+
         # Create XGT operations instance
         xgt_ops = create_xgt_operations()
-        
+
         # Get specific dataset information
         datasets_raw = xgt_ops.datasets_info(dataset_name=dataset_name)
-        
+
         if not datasets_raw:
             raise HTTPException(
                 status_code=404,
@@ -229,9 +230,9 @@ async def get_dataset_info(
                     "details": f"No dataset named '{dataset_name}' exists"
                 }
             )
-        
+
         dataset_raw = datasets_raw[0]  # Should only be one dataset
-        
+
         # Convert to response format (same logic as list_datasets)
         vertices = []
         for vertex_raw in dataset_raw.get('vertices', []):
@@ -243,7 +244,7 @@ async def get_dataset_info(
                 delete_frame=vertex_raw['delete_frame'],
                 key=vertex_raw['key']
             ))
-        
+
         edges = []
         for edge_raw in dataset_raw.get('edges', []):
             edges.append(EdgeFrameInfo(
@@ -257,13 +258,13 @@ async def get_dataset_info(
                 target_frame=edge_raw['target_frame'],
                 target_key=edge_raw['target_key']
             ))
-        
+
         return DatasetInfo(
             name=dataset_raw['name'],
             vertices=vertices,
             edges=edges
         )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise

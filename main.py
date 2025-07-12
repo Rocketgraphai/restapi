@@ -6,13 +6,14 @@ Provides secure, scalable REST API access to graph database operations.
 """
 
 import uvicorn
+
 from app.config.app_config import get_settings
 
 
 def main():
     """Main entry point for the application."""
     settings = get_settings()
-    
+
     uvicorn.run(
         "app.api.main:app",
         host=settings.HOST,

@@ -2,11 +2,12 @@
 Shared pytest configuration and fixtures.
 """
 
-import pytest
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+import pytest
 
 from app.api.main import app
 

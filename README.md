@@ -123,6 +123,88 @@ MONGODB_URI=mongodb://localhost:27017/rocketgraph_api
 REDIS_URL=redis://localhost:6379
 ```
 
+## Testing
+
+### Running Tests
+
+```bash
+# Unit tests
+pytest tests/unit/ -v
+
+# Mock integration tests (no external dependencies)
+pytest tests/integration/test_api_endpoints.py -v
+
+# All tests with coverage
+pytest --cov=app --cov-report=html
+```
+
+### Complete CI Test Suite
+
+Run the **exact same tests** as GitHub Actions locally:
+
+```bash
+# Basic test suite (code quality + unit tests + mock integration)
+./scripts/run-ci-tests.py
+
+# Include XGT integration tests  
+./scripts/run-ci-tests.py --with-xgt
+
+# Use specific XGT version
+./scripts/run-ci-tests.py --with-xgt --xgt-version 2.3.0
+
+# Include security scans
+./scripts/run-ci-tests.py --security-scans
+
+# Stop on first failure
+./scripts/run-ci-tests.py --fail-fast
+
+# Bash version (same options)
+./scripts/run-ci-tests.sh --with-xgt
+```
+
+### XGT Integration Testing
+
+For standalone XGT testing:
+
+#### Local Testing
+```bash
+# Run with latest XGT version
+./scripts/test-with-xgt.sh
+
+# Run with specific XGT version
+./scripts/test-with-xgt.sh 2.3.0
+
+# Smart pytest wrapper (auto-detects existing XGT)
+./scripts/pytest-xgt.sh
+
+# Run specific tests
+./scripts/pytest-xgt.sh tests/integration/test_xgt_datasets.py -k "concurrent"
+```
+
+#### GitHub Actions Testing
+
+The CI/CD pipeline includes multiple testing strategies:
+
+1. **Unit Tests**: Mock-based tests for individual functions
+2. **Mock Integration Tests**: Full API stack with mocked XGT (always run)
+3. **XGT Integration Tests**: Real XGT server testing (conditional)
+
+To enable XGT integration testing in GitHub Actions:
+
+1. Set repository secrets:
+   - `XGT_LICENSE_KEY`: Your XGT license key
+
+2. Set repository variables:
+   - `XGT_INTEGRATION_ENABLED`: `true` 
+   - `XGT_VERSION`: `latest` or specific version (e.g., `2.3.0`)
+
+The XGT integration tests will:
+- Pull the latest `rocketgraph/xgt` Docker image
+- Find an available port starting from 4367
+- Start XGT server with health checks
+- Run comprehensive integration tests
+- Clean up automatically
+
 ### Rate Limiting Tiers
 
 The API supports multiple rate limiting tiers:

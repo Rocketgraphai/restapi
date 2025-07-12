@@ -111,33 +111,9 @@ jobs:
 
   # Integration Tests with Services
   integration-test:
-    name: Integration Tests
+    name: Integration Tests (Mock)
     runs-on: ubuntu-latest
     needs: [test]
-
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      mongodb:
-        image: mongo:6
-        ports:
-          - 27017:27017
-        env:
-          MONGO_INITDB_ROOT_USERNAME: admin
-          MONGO_INITDB_ROOT_PASSWORD: password
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - uses: actions/checkout@v4
@@ -152,24 +128,123 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements/development.txt
 
-    - name: Run integration tests
-      env:
-        MONGODB_URI: mongodb://admin:password@localhost:27017/test_db?authSource=admin
-        REDIS_URL: redis://localhost:6379
-        ENVIRONMENT: testing
+    - name: Run mock integration tests
       run: |
-        pytest tests/integration/ \
-          --cov=app \
-          --cov-append \
-          --junitxml=integration-junit.xml \
+        pytest tests/integration/test_api_endpoints.py \
+          --junitxml=mock-integration-junit.xml \
           -v
 
-    - name: Upload integration test results
+    - name: Upload mock integration test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: integration-test-results
-        path: integration-junit.xml
+        name: mock-integration-test-results
+        path: mock-integration-junit.xml
+
+  # Integration Tests with Real XGT
+  xgt-integration-test:
+    name: Integration Tests (XGT)
+    runs-on: ubuntu-latest
+    needs: [test]
+    # Only run if XGT license key is available
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.XGT_INTEGRATION_ENABLED == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Pull XGT Docker image
+      env:
+        XGT_VERSION: ${{ vars.XGT_VERSION || 'latest' }}
+      run: |
+        echo "Pulling rocketgraph/xgt:${XGT_VERSION} image..."
+        docker pull rocketgraph/xgt:${XGT_VERSION}
+        echo "XGT_IMAGE_TAG=${XGT_VERSION}" >> $GITHUB_ENV
+
+    - name: Find available port for XGT
+      id: find-port
+      run: |
+        # Find an available port starting from 4367
+        for port in {4367..4377}; do
+          if ! netstat -tuln | grep -q ":$port "; then
+            echo "Found available port: $port"
+            echo "xgt_port=$port" >> $GITHUB_OUTPUT
+            break
+          fi
+        done
+        
+        # Fallback to a random high port if none found
+        if [ -z "$xgt_port" ]; then
+          port=$(shuf -i 5000-5999 -n 1)
+          echo "Using fallback port: $port"
+          echo "xgt_port=$port" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Start XGT server
+      run: |
+        echo "Starting XGT server (${XGT_IMAGE_TAG}) on port ${{ steps.find-port.outputs.xgt_port }}..."
+        docker run -d \
+          --name xgt-server \
+          -p ${{ steps.find-port.outputs.xgt_port }}:4367 \
+          -e XGT_LICENSE_KEY="${{ secrets.XGT_LICENSE_KEY }}" \
+          --health-cmd="curl -f http://localhost:4367/health || exit 1" \
+          --health-interval=10s \
+          --health-timeout=5s \
+          --health-retries=3 \
+          rocketgraph/xgt:${XGT_IMAGE_TAG}
+        
+        echo "Waiting for XGT server to be ready..."
+        timeout 120 bash -c 'until curl -f http://localhost:${{ steps.find-port.outputs.xgt_port }}/health 2>/dev/null; do 
+          echo "Waiting for XGT server..."
+          sleep 3
+        done'
+        
+        echo "XGT server is ready! Version: ${XGT_IMAGE_TAG}"
+        echo "Server info:"
+        curl -s http://localhost:${{ steps.find-port.outputs.xgt_port }}/health | head -5
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements/development.txt
+
+    - name: Run XGT integration tests
+      env:
+        XGT_HOST: localhost
+        XGT_PORT: ${{ steps.find-port.outputs.xgt_port }}
+        XGT_USERNAME: admin
+        XGT_PASSWORD: ""
+        ENVIRONMENT: testing
+      run: |
+        pytest tests/integration/test_xgt_datasets.py \
+          --junitxml=xgt-integration-junit.xml \
+          -v -s
+
+    - name: Show XGT logs on failure
+      if: failure()
+      run: |
+        echo "=== XGT Server Logs ==="
+        docker logs xgt-server || echo "Could not retrieve XGT logs"
+        echo "=== Docker Container Status ==="
+        docker ps -a | grep xgt-server || echo "No XGT container found"
+
+    - name: Stop XGT server
+      if: always()
+      run: |
+        echo "Stopping XGT server..."
+        docker stop xgt-server || true
+        docker rm xgt-server || true
+
+    - name: Upload XGT integration test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: xgt-integration-test-results
+        path: xgt-integration-junit.xml
 
   # Security Scanning
   security:

@@ -50,6 +50,12 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+junit.xml
+*-junit.xml
+bandit-report.json
+.bandit
+mypy-report.xml
+ruff-report.json
 
 # Translations
 *.mo
