@@ -8,7 +8,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class DatasetFrameInfo(BaseModel):
     """Information about a frame (vertex or edge) in a dataset."""
     name: str = Field(..., description="Frame name")
-    schema: list[list[Any]] = Field(..., description="Frame schema definition")
+    schema_definition: list[list[Any]] = Field(..., description="Frame schema definition")
     num_rows: int = Field(..., description="Number of rows in the frame")
     create_rows: bool = Field(..., description="Whether user can create rows")
     delete_frame: bool = Field(..., description="Whether user can delete frame")
@@ -46,14 +46,14 @@ class DatasetInfo(BaseModel):
     vertices: list[VertexFrameInfo] = Field(..., description="Vertex frames in the dataset")
     edges: list[EdgeFrameInfo] = Field(..., description="Edge frames in the dataset")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "social_network",
                 "vertices": [
                     {
                         "name": "users",
-                        "schema": [["id", "TEXT"], ["name", "TEXT"], ["age", "INTEGER"]],
+                        "schema_definition": [["id", "TEXT"], ["name", "TEXT"], ["age", "INTEGER"]],
                         "num_rows": 1000,
                         "create_rows": True,
                         "delete_frame": False,
@@ -63,7 +63,7 @@ class DatasetInfo(BaseModel):
                 "edges": [
                     {
                         "name": "friendships",
-                        "schema": [["created_at", "DATETIME"], ["weight", "FLOAT"]],
+                        "schema_definition": [["created_at", "DATETIME"], ["weight", "FLOAT"]],
                         "num_rows": 5000,
                         "create_rows": True,
                         "delete_frame": False,
@@ -75,6 +75,7 @@ class DatasetInfo(BaseModel):
                 ]
             }
         }
+    )
 
 
 class DatasetsResponse(BaseModel):
@@ -114,8 +115,8 @@ class SchemaResponse(BaseModel):
     nodes: list[NodeSchema] = Field(..., description="Node schemas")
     edges: list[EdgeSchema] = Field(..., description="Edge schemas")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "graph": "customer_graph",
                 "nodes": [
@@ -144,6 +145,7 @@ class SchemaResponse(BaseModel):
                 ]
             }
         }
+    )
 
 
 @router.get("/datasets", response_model=DatasetsResponse)
@@ -189,7 +191,7 @@ async def list_datasets(
             for vertex_raw in dataset_raw.get('vertices', []):
                 vertices.append(VertexFrameInfo(
                     name=vertex_raw['name'],
-                    schema=vertex_raw['schema'],
+                    schema_definition=vertex_raw['schema'],
                     num_rows=vertex_raw['num_rows'],
                     create_rows=vertex_raw['create_rows'],
                     delete_frame=vertex_raw['delete_frame'],
@@ -201,7 +203,7 @@ async def list_datasets(
             for edge_raw in dataset_raw.get('edges', []):
                 edges.append(EdgeFrameInfo(
                     name=edge_raw['name'],
-                    schema=edge_raw['schema'],
+                    schema_definition=edge_raw['schema'],
                     num_rows=edge_raw['num_rows'],
                     create_rows=edge_raw['create_rows'],
                     delete_frame=edge_raw['delete_frame'],
@@ -424,7 +426,7 @@ async def get_dataset_info(
         for vertex_raw in dataset_raw.get('vertices', []):
             vertices.append(VertexFrameInfo(
                 name=vertex_raw['name'],
-                schema=vertex_raw['schema'],
+                schema_definition=vertex_raw['schema'],
                 num_rows=vertex_raw['num_rows'],
                 create_rows=vertex_raw['create_rows'],
                 delete_frame=vertex_raw['delete_frame'],
@@ -435,7 +437,7 @@ async def get_dataset_info(
         for edge_raw in dataset_raw.get('edges', []):
             edges.append(EdgeFrameInfo(
                 name=edge_raw['name'],
-                schema=edge_raw['schema'],
+                schema_definition=edge_raw['schema'],
                 num_rows=edge_raw['num_rows'],
                 create_rows=edge_raw['create_rows'],
                 delete_frame=edge_raw['delete_frame'],

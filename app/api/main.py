@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 
 from ..config.app_config import get_settings
 from ..utils.exceptions import BaseAPIException
-from .v1.public import datasets, frames, health
+from .v1.public import datasets, frames, health, query
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -172,6 +172,12 @@ def create_app() -> FastAPI:
         frames.router,
         prefix="/api/v1/public",
         tags=["frames"]
+    )
+
+    app.include_router(
+        query.router,
+        prefix="/api/v1/public",
+        tags=["query"]
     )
 
     return app
