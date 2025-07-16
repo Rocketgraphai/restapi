@@ -168,3 +168,136 @@ class TestDatasetsEndpoint:
         error_message = data["error"]["message"]
         assert error_message["error"] == "DATASET_NOT_FOUND"
         assert "nonexistent" in error_message["message"]
+
+
+class TestDatasetSchemaEndpoint:
+    """Test dataset schema endpoint."""
+
+    @patch('app.api.v1.public.datasets.create_xgt_operations')
+    def test_get_dataset_schema_success(self, mock_create_xgt_ops, client):
+        """Test successful schema retrieval."""
+        mock_xgt_ops = Mock()
+        mock_xgt_ops.get_schema.return_value = {
+            'graph': 'test_dataset',
+            'nodes': [
+                {
+                    'name': 'Customer',
+                    'properties': [
+                        {'name': 'id', 'type': 'TEXT', 'leaf_type': 'TEXT', 'depth': 1},
+                        {'name': 'name', 'type': 'TEXT', 'leaf_type': 'TEXT', 'depth': 1},
+                        {'name': 'age', 'type': 'INTEGER', 'leaf_type': 'INTEGER', 'depth': 1}
+                    ],
+                    'key': 'id'
+                }
+            ],
+            'edges': [
+                {
+                    'name': 'PURCHASED',
+                    'properties': [
+                        {'name': 'amount', 'type': 'FLOAT', 'leaf_type': 'FLOAT', 'depth': 1},
+                        {'name': 'date', 'type': 'DATETIME', 'leaf_type': 'DATETIME', 'depth': 1}
+                    ],
+                    'source': 'Customer',
+                    'target': 'Product',
+                    'source_key': 'id',
+                    'target_key': 'id'
+                }
+            ]
+        }
+        mock_create_xgt_ops.return_value = mock_xgt_ops
+
+        response = client.get("/api/v1/public/datasets/test_dataset/schema")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["graph"] == "test_dataset"
+        assert len(data["nodes"]) == 1
+        assert len(data["edges"]) == 1
+
+        # Check node schema
+        node = data["nodes"][0]
+        assert node["name"] == "Customer"
+        assert node["key"] == "id"
+        assert len(node["properties"]) == 3
+
+        # Check property structure
+        id_prop = node["properties"][0]
+        assert id_prop["name"] == "id"
+        assert id_prop["type"] == "TEXT"
+        assert id_prop["leaf_type"] == "TEXT"
+        assert id_prop["depth"] == 1
+
+        # Check edge schema
+        edge = data["edges"][0]
+        assert edge["name"] == "PURCHASED"
+        assert edge["source"] == "Customer"
+        assert edge["target"] == "Product"
+        assert edge["source_key"] == "id"
+        assert edge["target_key"] == "id"
+        assert len(edge["properties"]) == 2
+
+    @patch('app.api.v1.public.datasets.create_xgt_operations')
+    def test_get_dataset_schema_with_params(self, mock_create_xgt_ops, client):
+        """Test schema retrieval with query parameters."""
+        mock_xgt_ops = Mock()
+        mock_xgt_ops.get_schema.return_value = {
+            'graph': 'test_dataset',
+            'nodes': [],
+            'edges': []
+        }
+        mock_create_xgt_ops.return_value = mock_xgt_ops
+
+        response = client.get(
+            "/api/v1/public/datasets/test_dataset/schema"
+            "?fully_qualified=true&add_missing_edge_nodes=true"
+        )
+
+        assert response.status_code == 200
+
+        # Verify that the parameters were passed to get_schema
+        mock_xgt_ops.get_schema.assert_called_once_with(
+            dataset_name='test_dataset',
+            fully_qualified=True,
+            add_missing_edge_nodes=True
+        )
+
+    @patch('app.api.v1.public.datasets.create_xgt_operations')
+    def test_get_dataset_schema_xgt_error(self, mock_create_xgt_ops, client):
+        """Test schema retrieval when XGT operation fails."""
+        from app.utils.exceptions import XGTOperationError
+
+        mock_xgt_ops = Mock()
+        mock_xgt_ops.get_schema.side_effect = XGTOperationError("Schema not found")
+        mock_create_xgt_ops.return_value = mock_xgt_ops
+
+        response = client.get("/api/v1/public/datasets/test_dataset/schema")
+
+        assert response.status_code == 500
+        data = response.json()
+
+        # FastAPI wraps HTTPException in custom error handler format
+        assert data["error"]["code"] == "HTTP_500"
+        error_message = data["error"]["message"]
+        assert error_message["error"] == "XGT_OPERATION_ERROR"
+        assert "Failed to retrieve schema" in error_message["message"]
+
+    @patch('app.api.v1.public.datasets.create_xgt_operations')
+    def test_get_dataset_schema_empty_dataset(self, mock_create_xgt_ops, client):
+        """Test schema retrieval for dataset with no frames."""
+        mock_xgt_ops = Mock()
+        mock_xgt_ops.get_schema.return_value = {
+            'graph': 'empty_dataset',
+            'nodes': [],
+            'edges': []
+        }
+        mock_create_xgt_ops.return_value = mock_xgt_ops
+
+        response = client.get("/api/v1/public/datasets/empty_dataset/schema")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["graph"] == "empty_dataset"
+        assert len(data["nodes"]) == 0
+        assert len(data["edges"]) == 0

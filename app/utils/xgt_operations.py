@@ -581,6 +581,113 @@ class XGTOperations:
             logger.error(f"Failed to get job status: {e}")
             raise XGTOperationError(f"Job status retrieval failed: {str(e)}")
 
+    def get_frame_data(self, frame_name: str, offset: int = 0, limit: int = 1000) -> dict:
+        """
+        Get data from a specific frame.
+
+        Args:
+            frame_name: Name of the frame (can be fully qualified like 'ns__frameName' or just 'frameName')
+            offset: Starting offset for data retrieval
+            limit: Maximum number of rows to return
+
+        Returns:
+            Dictionary containing frame data and metadata
+
+        Raises:
+            XGTOperationError: If frame not found or operation fails
+        """
+        try:
+            with self.connection() as conn:
+                # Get the frame - XGT handles namespace resolution automatically
+                try:
+                    frames = conn.get_frames(names=[frame_name])
+                    if not frames:
+                        raise XGTOperationError(f"Frame '{frame_name}' not found")
+                    
+                    frame = frames[0]
+                except Exception:
+                    raise XGTOperationError(f"Frame '{frame_name}' not found or not accessible")
+
+                # Get frame data - different frame types have different get_data signatures
+                try:
+                    # Try with num_rows first (VertexFrame and EdgeFrame)
+                    data = frame.get_data(offset=offset, num_rows=limit)
+                except TypeError:
+                    # Fallback for TableFrame which uses 'length' instead of 'num_rows'
+                    try:
+                        data = frame.get_data(offset=offset, length=limit)
+                    except TypeError:
+                        # Last resort - try with just offset
+                        data = frame.get_data(offset=offset)
+                        # If we got more data than requested, slice it
+                        if data and len(data) > limit:
+                            data = data[:limit]
+                
+                # Convert data to list format for JSON serialization
+                if data is not None:
+                    # Get column names from schema
+                    columns = [prop[0] for prop in frame.schema]
+                    
+                    # Convert data to list of lists
+                    rows = []
+                    for row in data:
+                        # Handle different data types that might not be JSON serializable
+                        json_row = []
+                        for value in row:
+                            if value is None:
+                                json_row.append(None)
+                            elif hasattr(value, 'isoformat'):  # datetime objects
+                                json_row.append(value.isoformat())
+                            else:
+                                json_row.append(value)
+                        rows.append(json_row)
+                else:
+                    columns = []
+                    rows = []
+
+                # Determine frame type more robustly
+                frame_type = "unknown"
+                frame_class_name = frame.__class__.__name__
+                
+                if 'EdgeFrame' in frame_class_name or hasattr(frame, 'source_name'):
+                    frame_type = "edge"
+                elif 'VertexFrame' in frame_class_name or hasattr(frame, 'key'):
+                    frame_type = "vertex"
+                elif 'TableFrame' in frame_class_name:
+                    frame_type = "table"
+                else:
+                    # Fallback detection
+                    if hasattr(frame, 'source_name') and hasattr(frame, 'target_name'):
+                        frame_type = "edge"
+                    elif hasattr(frame, 'key'):
+                        frame_type = "vertex"
+                    else:
+                        frame_type = "table"
+
+                # Extract namespace from frame name if present
+                namespace = None
+                if "__" in frame_name:
+                    namespace = frame_name.split("__")[0]
+
+                return {
+                    "frame_name": frame_name,
+                    "frame_type": frame_type,
+                    "namespace": namespace,
+                    "columns": columns,
+                    "rows": rows,
+                    "total_rows": frame.num_rows,
+                    "offset": offset,
+                    "limit": limit,
+                    "returned_rows": len(rows)
+                }
+
+        except XGTOperationError:
+            # Re-raise XGT operation errors
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get frame data: {e}")
+            raise XGTOperationError(f"Frame data retrieval failed: {str(e)}")
+
 
 # Factory function for creating XGT operations
 def create_xgt_operations() -> XGTOperations:
