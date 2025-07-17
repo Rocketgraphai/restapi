@@ -7,30 +7,49 @@ from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 import pytest
+from fastapi import FastAPI
 
 
 @pytest.fixture
 def client():
-    """Create test client."""
+    """Create test client with mocked authentication."""
     from app.api.main import app
-    return TestClient(app)
+    from app.auth.passthrough_middleware import require_xgt_authentication
+    from app.auth.passthrough_models import AuthenticatedXGTUser
+    
+    # Create a mock user for testing
+    mock_user = AuthenticatedXGTUser(
+        username="test_user",
+        namespace="test_namespace",
+        authenticated_at=time.time(),
+        expires_at=time.time() + 3600,
+        credentials=Mock()
+    )
+    
+    # Override the authentication dependency
+    app.dependency_overrides[require_xgt_authentication] = lambda: mock_user
+    
+    yield TestClient(app)
+    
+    # Clean up dependency overrides
+    app.dependency_overrides.clear()
+
+
 
 
 class TestQueryExecution:
     """Test query execution endpoint."""
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_execute_query_success(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_execute_query_success(self, mock_create_user_xgt_ops, client):
         """Test successful query execution."""
+        # Mock XGT operations
         mock_xgt_ops = Mock()
-        mock_xgt_ops.schedule_query.return_value = {
-            'job_id': 12345,
-            'status': 'queued',
-            'query': 'MATCH (c:Customer) RETURN c.name LIMIT 10',
-            'dataset_name': 'ecommerce',
-            'submitted_at': time.time()
-        }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_xgt_ops.execute_query.return_value = [
+            {'customer_name': 'John Doe'},
+            {'customer_name': 'Jane Smith'}
+        ]
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         query_data = {
             "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
@@ -44,30 +63,24 @@ class TestQueryExecution:
         assert response.status_code == 200
         data = response.json()
 
-        assert data["job_id"] == 12345
-        assert data["status"] == "queued"
+        assert "job_id" in data
+        assert data["status"] == "completed"
         assert data["query"] == "MATCH (c:Customer) RETURN c.name LIMIT 10"
         assert data["dataset_name"] == "ecommerce"
         assert "submitted_at" in data
 
         # Verify XGT operations was called correctly
-        mock_xgt_ops.schedule_query.assert_called_once_with(
-            query="MATCH (c:Customer) RETURN c.name LIMIT 10",
-            dataset_name="ecommerce"
-        )
+        mock_xgt_ops.execute_query.assert_called_once_with("MATCH (c:Customer) RETURN c.name LIMIT 10")
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_execute_query_with_parameters(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_execute_query_with_parameters(self, mock_create_user_xgt_ops, client):
         """Test query execution with parameters."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.schedule_query.return_value = {
-            'job_id': 12346,
-            'status': 'queued',
-            'query': 'MATCH (c:Customer) WHERE c.age > $min_age RETURN c.name',
-            'dataset_name': 'test_dataset',
-            'submitted_at': time.time()
-        }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_xgt_ops.execute_query.return_value = [
+            {'customer_name': 'Adult Customer 1'},
+            {'customer_name': 'Adult Customer 2'}
+        ]
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         query_data = {
             "query": "MATCH (c:Customer) WHERE c.age > $min_age RETURN c.name",
@@ -80,17 +93,18 @@ class TestQueryExecution:
         assert response.status_code == 200
         data = response.json()
 
-        assert data["job_id"] == 12346
+        assert "job_id" in data
+        assert data["status"] == "completed"
         assert data["dataset_name"] == "test_dataset"
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_execute_query_invalid_query(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_execute_query_invalid_query(self, mock_create_user_xgt_ops, client):
         """Test query execution with invalid query (INTO clause)."""
         from app.utils.exceptions import XGTOperationError
 
         mock_xgt_ops = Mock()
-        mock_xgt_ops.schedule_query.side_effect = XGTOperationError("INTO clauses not allowed in public API")
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_xgt_ops.execute_query.side_effect = XGTOperationError("INTO clauses not allowed in public API")
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         query_data = {
             "query": "MATCH (c:Customer) RETURN c.name INTO temp_table",
@@ -107,14 +121,14 @@ class TestQueryExecution:
         assert error_message["error"] == "INVALID_QUERY"
         assert "forbidden operations" in error_message["message"]
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_execute_query_xgt_connection_error(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_execute_query_xgt_connection_error(self, mock_create_user_xgt_ops, client):
         """Test query execution when XGT connection fails."""
         from app.utils.exceptions import XGTConnectionError
 
         mock_xgt_ops = Mock()
-        mock_xgt_ops.schedule_query.side_effect = XGTConnectionError("Connection refused")
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_xgt_ops.execute_query.side_effect = XGTConnectionError("Connection refused")
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         query_data = {
             "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
@@ -156,8 +170,8 @@ class TestQueryExecution:
 class TestQueryStatus:
     """Test query status endpoint."""
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_status_success(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_status_success(self, mock_create_user_xgt_ops, client):
         """Test successful query status retrieval."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.job_status.return_value = {
@@ -167,7 +181,7 @@ class TestQueryStatus:
             'start_time': 1642248000.0,
             'end_time': 1642248045.0
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12345/status")
 
@@ -184,8 +198,8 @@ class TestQueryStatus:
         # Verify XGT operations was called correctly
         mock_xgt_ops.job_status.assert_called_once_with(12345)
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_status_running(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_status_running(self, mock_create_user_xgt_ops, client):
         """Test query status for running job."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.job_status.return_value = {
@@ -195,7 +209,7 @@ class TestQueryStatus:
             'start_time': 1642248000.0,
             'end_time': None
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12346/status")
 
@@ -208,14 +222,14 @@ class TestQueryStatus:
         assert data["end_time"] is None
         assert data["processing_time_ms"] is None
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_status_not_found(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_status_not_found(self, mock_create_user_xgt_ops, client):
         """Test query status for non-existent job."""
         from app.utils.exceptions import XGTOperationError
 
         mock_xgt_ops = Mock()
         mock_xgt_ops.job_status.side_effect = XGTOperationError("Job not found")
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/99999/status")
 
@@ -231,8 +245,8 @@ class TestQueryStatus:
 class TestQueryResults:
     """Test query results endpoint."""
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_success(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_success(self, mock_create_user_xgt_ops, client):
         """Test successful query results retrieval."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.return_value = {
@@ -245,7 +259,7 @@ class TestQueryResults:
             'offset': 0,
             'length': 2
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12345/results")
 
@@ -268,8 +282,8 @@ class TestQueryResults:
             length=1000
         )
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_with_pagination(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_with_pagination(self, mock_create_user_xgt_ops, client):
         """Test query results with pagination."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.return_value = {
@@ -281,7 +295,7 @@ class TestQueryResults:
             'offset': 50,
             'length': 1
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12346/results?offset=50&limit=25")
 
@@ -299,8 +313,8 @@ class TestQueryResults:
             length=25
         )
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_not_completed(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_not_completed(self, mock_create_user_xgt_ops, client):
         """Test query results for job that's not completed."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.return_value = {
@@ -310,7 +324,7 @@ class TestQueryResults:
             'offset': 0,
             'length': 0
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12347/results")
 
@@ -324,8 +338,8 @@ class TestQueryResults:
         assert data["returned_rows"] == 0
         assert data["result_metadata"]["query_execution_completed"] is False
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_dict_format(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_dict_format(self, mock_create_user_xgt_ops, client):
         """Test query results with dictionary format."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.return_value = {
@@ -338,7 +352,7 @@ class TestQueryResults:
             'offset': 0,
             'length': 2
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12348/results")
 
@@ -349,14 +363,14 @@ class TestQueryResults:
         assert data["rows"][0] == ['John Doe', 299.99, 'Smartphone']
         assert data["rows"][1] == ['Jane Smith', 1299.99, 'Laptop']
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_not_found(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_not_found(self, mock_create_user_xgt_ops, client):
         """Test query results for non-existent job."""
         from app.utils.exceptions import XGTOperationError
 
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.side_effect = XGTOperationError("Job not found")
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/99999/results")
 
@@ -368,8 +382,8 @@ class TestQueryResults:
         assert error_message["error"] == "JOB_NOT_FOUND"
         assert "99999" in error_message["message"]
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_query_results_empty_results(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_query_results_empty_results(self, mock_create_user_xgt_ops, client):
         """Test query results with empty result set."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_query_answer.return_value = {
@@ -379,7 +393,7 @@ class TestQueryResults:
             'offset': 0,
             'length': 0
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/12349/results")
 
@@ -396,8 +410,8 @@ class TestQueryResults:
 class TestJobHistory:
     """Test job history endpoint."""
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_success(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_success(self, mock_create_user_xgt_ops, client):
         """Test successful job history retrieval."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.return_value = {
@@ -426,7 +440,7 @@ class TestJobHistory:
             'per_page': 50,
             'has_more': False
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs")
 
@@ -455,8 +469,8 @@ class TestJobHistory:
             dataset_filter=None
         )
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_with_pagination(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_with_pagination(self, mock_create_user_xgt_ops, client):
         """Test job history retrieval with pagination."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.return_value = {
@@ -476,7 +490,7 @@ class TestJobHistory:
             'per_page': 5,
             'has_more': True
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs?page=2&per_page=5")
 
@@ -497,8 +511,8 @@ class TestJobHistory:
             dataset_filter=None
         )
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_with_filters(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_with_filters(self, mock_create_user_xgt_ops, client):
         """Test job history retrieval with status and dataset filters."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.return_value = {
@@ -518,7 +532,7 @@ class TestJobHistory:
             'per_page': 50,
             'has_more': False
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs?status=failed&dataset_name=ecommerce")
 
@@ -537,8 +551,8 @@ class TestJobHistory:
             dataset_filter="ecommerce"
         )
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_empty(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_empty(self, mock_create_user_xgt_ops, client):
         """Test job history retrieval when no jobs exist."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.return_value = {
@@ -548,7 +562,7 @@ class TestJobHistory:
             'per_page': 50,
             'has_more': False
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs")
 
@@ -559,14 +573,14 @@ class TestJobHistory:
         assert data["total_count"] == 0
         assert data["has_more"] is False
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_xgt_error(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_xgt_error(self, mock_create_user_xgt_ops, client):
         """Test job history retrieval when XGT operation fails."""
         from app.utils.exceptions import XGTOperationError
 
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.side_effect = XGTOperationError("Job history retrieval failed")
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs")
 
@@ -592,8 +606,8 @@ class TestJobHistory:
         response = client.get("/api/v1/public/query/jobs?per_page=300")
         assert response.status_code == 422
 
-    @patch('app.api.v1.public.query.create_xgt_operations')
-    def test_get_job_history_processing_time_calculation(self, mock_create_xgt_ops, client):
+    @patch('app.api.v1.public.query.create_user_xgt_operations')
+    def test_get_job_history_processing_time_calculation(self, mock_create_user_xgt_ops, client):
         """Test that processing time is calculated correctly."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_job_history.return_value = {
@@ -613,7 +627,7 @@ class TestJobHistory:
             'per_page': 50,
             'has_more': False
         }
-        mock_create_xgt_ops.return_value = mock_xgt_ops
+        mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/query/jobs")
 

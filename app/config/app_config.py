@@ -54,8 +54,15 @@ class Settings(BaseSettings):
     DEFAULT_RATE_LIMIT_PER_HOUR: int = Field(default=1000, description="Default requests per hour")
     DEFAULT_RATE_LIMIT_PER_DAY: int = Field(default=10000, description="Default requests per day")
 
-    # Authentication Settings
-    API_KEY_EXPIRY_DAYS: int = Field(default=365, description="API key expiry in days")
+    # XGT Pass-through Authentication Settings
+    JWT_SECRET_KEY: str = Field(default="dev-jwt-secret-key-change-in-production", description="JWT secret key for XGT credential encryption")
+    JWT_ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    JWT_EXPIRY_SECONDS: int = Field(default=3600, description="JWT token expiry in seconds (1 hour)")
+    
+    # XGT Authentication Types Enabled
+    XGT_BASIC_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT Basic Auth (username/password)")
+    XGT_PKI_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT PKI certificate authentication")
+    XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(default=False, description="Enable XGT Proxy PKI authentication")
 
     # LLM Settings
     LLM_PROVIDERS: list[str] = Field(default=["openai", "anthropic"], description="Available LLM providers")
@@ -115,6 +122,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production environment requires a secure SECRET_KEY (not dev default)")
             if self.API_KEY_SALT.startswith('dev-'):
                 raise ValueError("Production environment requires a secure API_KEY_SALT (not dev default)")
+            if self.JWT_SECRET_KEY.startswith('dev-'):
+                raise ValueError("Production environment requires a secure JWT_SECRET_KEY (not dev default)")
         return self
 
     @property

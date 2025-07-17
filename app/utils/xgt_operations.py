@@ -1263,6 +1263,48 @@ class XGTOperations:
             logger.error(f"Failed to get frame data: {e}")
             raise XGTOperationError(f"Frame data retrieval failed: {str(e)}")
 
+    def _execute_query_sync(self, query: str, parameters: dict = None) -> list:
+        """
+        Execute a query synchronously and return results.
+        
+        Args:
+            query: Cypher query to execute
+            parameters: Query parameters
+            
+        Returns:
+            List of result dictionaries
+            
+        Raises:
+            XGTOperationError: If query execution fails
+        """
+        try:
+            with self.connection() as conn:
+                # Execute query with parameters
+                if parameters:
+                    result = conn.run(query, parameters)
+                else:
+                    result = conn.run(query)
+                
+                # Convert result to list of dictionaries
+                results = []
+                if hasattr(result, 'records') and result.records:
+                    for record in result.records:
+                        if hasattr(record, 'data'):
+                            results.append(record.data())
+                        elif hasattr(record, '_fields') and hasattr(record, '_values'):
+                            # Handle different result formats
+                            record_dict = dict(zip(record._fields, record._values))
+                            results.append(record_dict)
+                        else:
+                            # Fallback for unknown record format
+                            results.append(dict(record))
+                
+                return results
+                
+        except Exception as e:
+            logger.error(f"Query execution failed: {e}")
+            raise XGTOperationError(f"Query execution error: {str(e)}")
+
 
 # Factory function for creating XGT operations
 def create_xgt_operations() -> XGTOperations:

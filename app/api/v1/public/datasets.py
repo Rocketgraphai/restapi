@@ -5,14 +5,16 @@ Provides read-only access to discover available datasets and their metadata.
 """
 
 import logging
-from typing import Any
+from typing import Any, Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field, ConfigDict
 
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
-from ....utils.xgt_operations import create_xgt_operations
+from ....utils.xgt_user_operations import create_user_xgt_operations
+from ....auth.passthrough_middleware import require_xgt_authentication
+from ....auth.passthrough_models import AuthenticatedXGTUser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -150,6 +152,7 @@ class SchemaResponse(BaseModel):
 
 @router.get("/datasets", response_model=DatasetsResponse)
 async def list_datasets(
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     include_empty: bool = Query(
         default=False,
         description="Include datasets with no frames"
@@ -173,11 +176,11 @@ async def list_datasets(
     try:
         logger.info("Listing datasets from XGT server")
 
-        # Create XGT operations instance
-        xgt_ops = create_xgt_operations()
+        # Create user-specific XGT operations instance
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
-        # Get datasets information from XGT
-        datasets_raw = xgt_ops.datasets_info()
+        # Get datasets accessible to user (their namespace)
+        datasets_raw = user_xgt_ops.datasets_info()
 
         # Transform the raw data into our response format
         datasets = []
@@ -261,6 +264,7 @@ async def list_datasets(
 @router.get("/datasets/{dataset_name}/schema", response_model=SchemaResponse)
 async def get_dataset_schema(
     dataset_name: str,
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     fully_qualified: bool = Query(
         default=False,
         description="Include namespace information in frame names"
@@ -290,11 +294,11 @@ async def get_dataset_schema(
     try:
         logger.info(f"Getting schema for dataset: {dataset_name}")
 
-        # Create XGT operations instance
-        xgt_ops = create_xgt_operations()
+        # Create user-specific XGT operations instance
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get schema information from XGT
-        schema_raw = xgt_ops.get_schema(
+        schema_raw = user_xgt_ops.get_schema(
             dataset_name=dataset_name,
             fully_qualified=fully_qualified,
             add_missing_edge_nodes=add_missing_edge_nodes
@@ -383,7 +387,8 @@ async def get_dataset_schema(
 
 @router.get("/datasets/{dataset_name}", response_model=DatasetInfo)
 async def get_dataset_info(
-    dataset_name: str
+    dataset_name: str,
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
 ):
     """
     Get detailed information about a specific dataset.
@@ -403,11 +408,11 @@ async def get_dataset_info(
     try:
         logger.info(f"Getting dataset info for: {dataset_name}")
 
-        # Create XGT operations instance
-        xgt_ops = create_xgt_operations()
+        # Create user-specific XGT operations instance
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get specific dataset information
-        datasets_raw = xgt_ops.datasets_info(dataset_name=dataset_name)
+        datasets_raw = user_xgt_ops.datasets_info(dataset_name=dataset_name)
 
         if not datasets_raw:
             raise HTTPException(

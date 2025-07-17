@@ -6,14 +6,16 @@ Frames can be vertex frames, edge frames, or table frames.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field, ConfigDict
 
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
-from ....utils.xgt_operations import create_xgt_operations
+from ....utils.xgt_user_operations import create_user_xgt_operations
+from ....auth.passthrough_middleware import require_xgt_authentication
+from ....auth.passthrough_models import AuthenticatedXGTUser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -134,6 +136,7 @@ class FrameDataResponse(BaseModel):
 
 @router.get("/frames", response_model=FramesListResponse)
 async def list_frames(
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     namespace: Optional[str] = Query(
         default=None,
         description="Filter frames by namespace (if not specified, all namespaces except xgt__)"
@@ -163,11 +166,11 @@ async def list_frames(
     try:
         logger.info("Listing all frames from XGT server")
         
-        # Create XGT operations instance
-        xgt_ops = create_xgt_operations()
+        # Create user-specific XGT operations instance
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
         
         # Get datasets information from XGT (this includes frame info)
-        datasets_raw = xgt_ops.datasets_info()
+        datasets_raw = user_xgt_ops.datasets_info()
         
         frames = []
         namespaces_found = set()
@@ -294,6 +297,7 @@ async def list_frames(
 @router.get("/frames/{frame_name}/data", response_model=FrameDataResponse)
 async def get_frame_data(
     frame_name: str,
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     offset: int = Query(
         default=0,
         ge=0,
@@ -331,11 +335,11 @@ async def get_frame_data(
     try:
         logger.info(f"Getting data from frame: {frame_name}")
 
-        # Create XGT operations instance
-        xgt_ops = create_xgt_operations()
+        # Create user-specific XGT operations instance
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get frame data from XGT
-        frame_data = xgt_ops.get_frame_data(
+        frame_data = user_xgt_ops.get_frame_data(
             frame_name=frame_name,
             offset=offset,
             limit=limit

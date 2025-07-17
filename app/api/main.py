@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from ..config.app_config import get_settings
 from ..utils.exceptions import BaseAPIException
 from .v1.public import datasets, frames, health, query
+from .v1.auth import passthrough_auth
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,10 +42,12 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
 
+    # Security schemes are now auto-detected from FastAPI dependencies
+    
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
-        description="Secure REST API for graph database operations using XGT",
+        description="Secure REST API for graph database operations using XGT with pass-through authentication",
         docs_url="/docs" if not settings.is_production else None,  # Disable docs in prod
         redoc_url="/redoc" if not settings.is_production else None,
         lifespan=lifespan
@@ -156,6 +159,15 @@ def create_app() -> FastAPI:
             )
 
     # Include routers
+    
+    # Authentication endpoints (no prefix, public access)
+    app.include_router(
+        passthrough_auth.router,
+        prefix="/api/v1",
+        tags=["authentication"]
+    )
+    
+    # Public endpoints (will require authentication after migration)
     app.include_router(
         health.router,
         prefix="/api/v1/public",

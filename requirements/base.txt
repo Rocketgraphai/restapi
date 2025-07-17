@@ -14,8 +14,11 @@ motor>=3.3.0  # Async MongoDB
 
 # Authentication & Security
 python-jose[cryptography]>=3.3.0
+PyJWT>=2.8.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
+cryptography>=41.0.0
+cachetools>=5.3.0
 
 # HTTP & Networking
 httpx>=0.25.0
