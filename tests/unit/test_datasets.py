@@ -40,8 +40,23 @@ class TestDatasetsEndpoint:
     @patch('app.api.v1.public.datasets.create_user_xgt_operations')
     def test_list_datasets_success(self, mock_create_user_xgt_ops, client):
         """Test successful datasets listing."""
-        # Mock XGT operations (currently not used by implementation but keep for future)
         mock_xgt_ops = Mock()
+        mock_xgt_ops.datasets_info.return_value = [
+            {
+                'name': 'test_namespace',
+                'vertices': [
+                    {
+                        'name': 'users',
+                        'schema': [['id', 'TEXT'], ['name', 'TEXT']],
+                        'num_rows': 100,
+                        'create_rows': True,
+                        'delete_frame': True,
+                        'key': 'id'
+                    }
+                ],
+                'edges': []
+            }
+        ]
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/datasets")
@@ -52,10 +67,14 @@ class TestDatasetsEndpoint:
         assert "datasets" in data
         assert "total_count" in data
         
-        # Current implementation returns user's namespace as dataset with empty frames
-        # When include_empty=False (default), empty datasets are filtered out
-        assert data["total_count"] == 0
-        assert len(data["datasets"]) == 0
+        # Should have one dataset with vertices
+        assert data["total_count"] == 1
+        assert len(data["datasets"]) == 1
+        
+        dataset = data["datasets"][0]
+        assert dataset["name"] == "test_namespace"
+        assert len(dataset["vertices"]) == 1
+        assert len(dataset["edges"]) == 0
 
     @patch('app.api.v1.public.datasets.create_user_xgt_operations')
     def test_list_datasets_empty(self, mock_create_user_xgt_ops, client):
@@ -77,18 +96,19 @@ class TestDatasetsEndpoint:
         """Test datasets listing when XGT connection fails."""
         from app.utils.exceptions import XGTConnectionError
 
-        # Current implementation doesn't use XGT operations for listing datasets
-        # It returns hardcoded user namespace, so this test verifies graceful handling
         mock_xgt_ops = Mock()
+        mock_xgt_ops.datasets_info.side_effect = XGTConnectionError("Connection failed")
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/datasets")
 
-        # Should succeed since current implementation doesn't call XGT for basic listing
-        assert response.status_code == 200
+        # Should return 503 when XGT connection fails
+        assert response.status_code == 503
         data = response.json()
 
-        assert data["total_count"] == 0  # Empty datasets filtered out by default
+        assert data["error"]["code"] == "HTTP_503"
+        error_message = data["error"]["message"]
+        assert error_message["error"] == "XGT_CONNECTION_ERROR"
 
     @patch('app.api.v1.public.datasets.create_user_xgt_operations')
     def test_get_dataset_info_success(self, mock_create_user_xgt_ops, client):

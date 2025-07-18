@@ -79,7 +79,7 @@ class TestFrameDataEndpoint:
         )
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_with_pagination(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_with_pagination(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval with pagination parameters."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_frame_data.return_value = {
@@ -113,7 +113,7 @@ class TestFrameDataEndpoint:
         )
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_edge_frame(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_edge_frame(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval for edge frame."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_frame_data.return_value = {
@@ -143,7 +143,7 @@ class TestFrameDataEndpoint:
         assert len(data["columns"]) == 4
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_not_found(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_not_found(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval when frame doesn't exist."""
         from app.utils.exceptions import XGTOperationError
 
@@ -162,7 +162,7 @@ class TestFrameDataEndpoint:
         assert "nonexistent" in error_message["message"]
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_xgt_connection_error(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_xgt_connection_error(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval when XGT connection fails."""
         from app.utils.exceptions import XGTConnectionError
 
@@ -180,7 +180,7 @@ class TestFrameDataEndpoint:
         assert error_message["error"] == "XGT_CONNECTION_ERROR"
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_invalid_parameters(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_invalid_parameters(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval with invalid parameters."""
         # Test negative offset
         response = client.get("/api/v1/public/frames/test_frame/data?offset=-1")
@@ -195,7 +195,7 @@ class TestFrameDataEndpoint:
         assert response.status_code == 422  # Validation error
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_empty_frame(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_empty_frame(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval for empty frame."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_frame_data.return_value = {
@@ -222,7 +222,7 @@ class TestFrameDataEndpoint:
         assert data["returned_rows"] == 0
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_get_frame_data_table_frame(self, mock_create_xgt_ops, client):
+    def test_get_frame_data_table_frame(self, mock_create_user_xgt_ops, client):
         """Test frame data retrieval for table frame (different get_data signature)."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_frame_data.return_value = {
@@ -258,7 +258,7 @@ class TestFramesListEndpoint:
     """Test frames listing endpoint."""
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_success(self, mock_create_xgt_ops, client):
+    def test_list_frames_success(self, mock_create_user_xgt_ops, client):
         """Test successful frames listing."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -342,7 +342,7 @@ class TestFramesListEndpoint:
         mock_xgt_ops.datasets_info.assert_called_once()
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_with_namespace_filter(self, mock_create_xgt_ops, client):
+    def test_list_frames_with_namespace_filter(self, mock_create_user_xgt_ops, client):
         """Test frames listing with namespace filter."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -386,7 +386,7 @@ class TestFramesListEndpoint:
         assert data["frames"][0]["name"] == "customers"
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_with_frame_type_filter(self, mock_create_xgt_ops, client):
+    def test_list_frames_with_frame_type_filter(self, mock_create_user_xgt_ops, client):
         """Test frames listing with frame type filter."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -427,7 +427,7 @@ class TestFramesListEndpoint:
         assert data["frames"][0]["name"] == "customers"
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_edge_frame_details(self, mock_create_xgt_ops, client):
+    def test_list_frames_edge_frame_details(self, mock_create_user_xgt_ops, client):
         """Test frames listing includes edge frame details."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -466,7 +466,7 @@ class TestFramesListEndpoint:
         assert edge_frame["key"] is None  # Edge frames don't have keys
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_vertex_frame_details(self, mock_create_xgt_ops, client):
+    def test_list_frames_vertex_frame_details(self, mock_create_user_xgt_ops, client):
         """Test frames listing includes vertex frame details."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -502,7 +502,7 @@ class TestFramesListEndpoint:
         assert vertex_frame["target_key"] is None
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_empty_result(self, mock_create_xgt_ops, client):
+    def test_list_frames_empty_result(self, mock_create_user_xgt_ops, client):
         """Test frames listing when no frames exist."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = []
@@ -518,7 +518,7 @@ class TestFramesListEndpoint:
         assert len(data["namespaces"]) == 0
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_excludes_xgt_namespace(self, mock_create_xgt_ops, client):
+    def test_list_frames_excludes_xgt_namespace(self, mock_create_user_xgt_ops, client):
         """Test that xgt__ namespace is excluded from results."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -561,7 +561,7 @@ class TestFramesListEndpoint:
         assert data["frames"][0]["namespace"] == "user_data"
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_xgt_connection_error(self, mock_create_xgt_ops, client):
+    def test_list_frames_xgt_connection_error(self, mock_create_user_xgt_ops, client):
         """Test frames listing when XGT connection fails."""
         from app.utils.exceptions import XGTConnectionError
 
@@ -579,7 +579,7 @@ class TestFramesListEndpoint:
         assert error_message["error"] == "XGT_CONNECTION_ERROR"
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_table_frame_details(self, mock_create_xgt_ops, client):
+    def test_list_frames_table_frame_details(self, mock_create_user_xgt_ops, client):
         """Test frames listing includes table frame details."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
@@ -619,7 +619,7 @@ class TestFramesListEndpoint:
         assert table_frame["target_key"] is None
 
     @patch('app.api.v1.public.frames.create_user_xgt_operations')
-    def test_list_frames_with_table_frame_type_filter(self, mock_create_xgt_ops, client):
+    def test_list_frames_with_table_frame_type_filter(self, mock_create_user_xgt_ops, client):
         """Test frames listing with table frame type filter."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
