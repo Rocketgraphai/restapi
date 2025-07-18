@@ -1,0 +1,989 @@
+openapi: 3.0.3
+info:
+  title: RocketGraph Public API
+  description: |
+    Secure REST API for graph database operations using XGT with pass-through authentication.
+    
+    ## Authentication
+    
+    This API uses JWT Bearer tokens obtained by authenticating with your XGT credentials.
+    
+    1. Use `/auth/xgt/basic` to authenticate with username/password
+    2. Include the returned JWT token in all subsequent requests as: `Authorization: Bearer <token>`
+    
+    ## Rate Limits
+    
+    - 1000 requests per hour per user
+    - Query timeout: 300 seconds
+    - Maximum result set: 10,000 rows per request
+    
+    ## Support
+    
+    - Interactive docs: `/docs`
+    - Health check: `/api/v1/public/health`
+    - Version info: `/api/v1/public/version`
+  version: 1.0.0
+  contact:
+    name: RocketGraph API Support
+    url: https://docs.rocketgraph.com
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.rocketgraph.com/api/v1
+    description: Production server
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/xgt/basic:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate with XGT basic credentials
+      description: Authenticate using username and password to get a JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BasicAuthRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/xgt/token:
+    post:
+      tags:
+        - Authentication
+      summary: OAuth2 Password Flow (Swagger UI Compatible)
+      description: OAuth2-compatible authentication endpoint for Swagger UI
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: XGT username
+                password:
+                  type: string
+                  description: XGT password
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2TokenResponse'
+
+  /auth/validate:
+    post:
+      tags:
+        - Authentication
+      summary: Validate JWT token
+      description: Check if the current JWT token is valid
+      responses:
+        '200':
+          description: Token validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenValidation'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user information
+      description: Get information about the currently authenticated user
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+
+  /public/health:
+    get:
+      tags:
+        - Health
+      summary: System health check
+      description: Comprehensive health information including XGT server status
+      security: []
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /public/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Kubernetes-compatible readiness probe
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  /public/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness check
+      description: Kubernetes-compatible liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: alive
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /public/version:
+    get:
+      tags:
+        - Health
+      summary: Version information
+      description: Detailed version information for API, XGT server, and SDK components
+      security: []
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+
+  /public/datasets:
+    get:
+      tags:
+        - Datasets
+      summary: List all datasets
+      description: List all datasets available to the authenticated user
+      parameters:
+        - name: include_empty
+          in: query
+          description: Include datasets with no frames
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of datasets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetsResponse'
+
+  /public/datasets/{dataset_name}:
+    get:
+      tags:
+        - Datasets
+      summary: Get specific dataset
+      description: Get detailed information about a specific dataset
+      parameters:
+        - name: dataset_name
+          in: path
+          required: true
+          description: Name of the dataset
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dataset information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetInfo'
+        '404':
+          description: Dataset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /public/datasets/{dataset_name}/schema:
+    get:
+      tags:
+        - Datasets
+      summary: Get dataset schema
+      description: Get schema information for a specific dataset
+      parameters:
+        - name: dataset_name
+          in: path
+          required: true
+          description: Name of the dataset
+          schema:
+            type: string
+        - name: fully_qualified
+          in: query
+          description: Include namespace information in frame names
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: add_missing_edge_nodes
+          in: query
+          description: Include missing edge nodes in the schema
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Dataset schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaResponse'
+
+  /public/datasets/{dataset_name}/query:
+    post:
+      tags:
+        - Query
+      summary: Execute Cypher query
+      description: Execute a Cypher query against a specific dataset
+      parameters:
+        - name: dataset_name
+          in: path
+          required: true
+          description: Name of the dataset to query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+      responses:
+        '200':
+          description: Query submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuerySubmissionResponse'
+        '400':
+          description: Invalid query or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /public/query/{job_id}/status:
+    get:
+      tags:
+        - Query
+      summary: Get query status
+      description: Get the current status of a query job
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          description: ID of the query job
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Query status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryStatusResponse'
+
+  /public/query/{job_id}/results:
+    get:
+      tags:
+        - Query
+      summary: Get query results
+      description: Get results from a completed query job
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          description: ID of the query job
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: Starting offset for results pagination
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          required: false
+          schema:
+            type: integer
+            default: 1000
+            minimum: 1
+            maximum: 10000
+      responses:
+        '200':
+          description: Query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResultsResponse'
+
+  /public/query/jobs:
+    get:
+      tags:
+        - Query
+      summary: List query history
+      description: List all query jobs in history with pagination
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: per_page
+          in: query
+          description: Number of jobs per page
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: status
+          in: query
+          description: Filter by job status
+          required: false
+          schema:
+            type: string
+            enum: [queued, running, completed, failed]
+        - name: dataset_name
+          in: query
+          description: Filter by dataset name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobHistoryResponse'
+
+  /public/frames:
+    get:
+      tags:
+        - Frames
+      summary: List all frames
+      description: List all frames available to the authenticated user
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          required: false
+          schema:
+            type: string
+        - name: frame_type
+          in: query
+          description: Filter by frame type
+          required: false
+          schema:
+            type: string
+            enum: [vertex, edge, table]
+      responses:
+        '200':
+          description: List of frames
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FramesListResponse'
+
+  /public/frames/{frame_name}/data:
+    get:
+      tags:
+        - Frames
+      summary: Get frame data
+      description: Get data from a specific frame with pagination support
+      parameters:
+        - name: frame_name
+          in: path
+          required: true
+          description: Name of the frame
+          schema:
+            type: string
+        - name: offset
+          in: query
+          description: Starting row offset
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: limit
+          in: query
+          description: Number of rows to return
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 10000
+      responses:
+        '200':
+          description: Frame data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameDataResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    BasicAuthRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: XGT username
+          example: "your-xgt-username"
+        password:
+          type: string
+          description: XGT password
+          example: "your-xgt-password"
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          example: "bearer"
+        expires_in:
+          type: integer
+          description: Token expiry in seconds
+          example: 3600
+        user_info:
+          $ref: '#/components/schemas/UserInfo'
+
+    OAuth2TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          example: "bearer"
+        expires_in:
+          type: integer
+          description: Token expiry in seconds
+
+    TokenValidation:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        username:
+          type: string
+          nullable: true
+        namespace:
+          type: string
+          nullable: true
+        authenticated_at:
+          type: number
+          nullable: true
+        expires_at:
+          type: number
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    UserInfo:
+      type: object
+      properties:
+        username:
+          type: string
+        namespace:
+          type: string
+        authenticated_at:
+          type: string
+          format: date-time
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime_seconds:
+          type: number
+        services:
+          type: object
+          additionalProperties:
+            type: string
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        ready:
+          type: boolean
+        checks:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    VersionResponse:
+      type: object
+      properties:
+        api:
+          type: object
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+            environment:
+              type: string
+            uptime_seconds:
+              type: number
+        xgt:
+          type: object
+          properties:
+            server_version:
+              type: string
+              nullable: true
+            server_protocol:
+              type: array
+              items:
+                type: integer
+              nullable: true
+            sdk_version:
+              type: string
+              nullable: true
+            client_protocol:
+              type: array
+              items:
+                type: integer
+              nullable: true
+            connection_status:
+              type: string
+
+    DatasetsResponse:
+      type: object
+      properties:
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetInfo'
+        total_count:
+          type: integer
+
+    DatasetInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        vertices:
+          type: array
+          items:
+            $ref: '#/components/schemas/VertexFrameInfo'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/EdgeFrameInfo'
+
+    VertexFrameInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        schema_definition:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        num_rows:
+          type: integer
+        create_rows:
+          type: boolean
+        delete_frame:
+          type: boolean
+        key:
+          type: string
+
+    EdgeFrameInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        schema_definition:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        num_rows:
+          type: integer
+        create_rows:
+          type: boolean
+        delete_frame:
+          type: boolean
+        source_frame:
+          type: string
+        source_key:
+          type: string
+        target_frame:
+          type: string
+        target_key:
+          type: string
+
+    SchemaResponse:
+      type: object
+      properties:
+        graph:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeSchema'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/EdgeSchema'
+
+    NodeSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaProperty'
+        key:
+          type: string
+
+    EdgeSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaProperty'
+        source:
+          type: string
+        target:
+          type: string
+        source_key:
+          type: string
+        target_key:
+          type: string
+
+    SchemaProperty:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        leaf_type:
+          type: string
+        depth:
+          type: integer
+
+    QueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Cypher query to execute
+          example: "MATCH (n:Customer) RETURN n.name LIMIT 10"
+        parameters:
+          type: object
+          description: Query parameters
+          nullable: true
+        format:
+          type: string
+          enum: [json]
+          default: json
+        limit:
+          type: integer
+          description: Maximum number of results
+          default: 1000
+          minimum: 1
+          maximum: 10000
+
+    QuerySubmissionResponse:
+      type: object
+      properties:
+        job_id:
+          type: integer
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        query:
+          type: string
+        dataset_name:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        estimated_completion:
+          type: string
+          format: date-time
+          nullable: true
+
+    QueryStatusResponse:
+      type: object
+      properties:
+        job_id:
+          type: integer
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+          nullable: true
+        start_time:
+          type: number
+          nullable: true
+        end_time:
+          type: number
+          nullable: true
+        processing_time_ms:
+          type: integer
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+
+    QueryResultsResponse:
+      type: object
+      properties:
+        job_id:
+          type: integer
+        status:
+          type: string
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+        offset:
+          type: integer
+        limit:
+          type: integer
+        returned_rows:
+          type: integer
+        total_rows:
+          type: integer
+          nullable: true
+        result_metadata:
+          type: object
+          properties:
+            query_execution_completed:
+              type: boolean
+            has_more_results:
+              type: boolean
+
+    JobHistoryResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobInfo'
+        total_count:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+        has_more:
+          type: boolean
+
+    JobInfo:
+      type: object
+      properties:
+        job_id:
+          type: integer
+        status:
+          type: string
+        query:
+          type: string
+        dataset_name:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+        start_time:
+          type: number
+          nullable: true
+        end_time:
+          type: number
+          nullable: true
+        processing_time_ms:
+          type: integer
+          nullable: true
+
+    FramesListResponse:
+      type: object
+      properties:
+        frames:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrameInfo'
+        total_count:
+          type: integer
+        namespaces:
+          type: array
+          items:
+            type: string
+
+    FrameInfo:
+      type: object
+      properties:
+        namespace:
+          type: string
+        name:
+          type: string
+        full_name:
+          type: string
+        frame_type:
+          type: string
+          enum: [vertex, edge, table]
+        num_rows:
+          type: integer
+        schema_definition:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        key:
+          type: string
+          nullable: true
+        source_name:
+          type: string
+          nullable: true
+        target_name:
+          type: string
+          nullable: true
+        source_key:
+          type: string
+          nullable: true
+        target_key:
+          type: string
+          nullable: true
+
+    FrameDataResponse:
+      type: object
+      properties:
+        frame_name:
+          type: string
+        frame_type:
+          type: string
+        namespace:
+          type: string
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+        total_rows:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+        returned_rows:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object

@@ -1,0 +1,441 @@
+{
+  "info": {
+    "name": "RocketGraph Public API",
+    "description": "Complete collection for RocketGraph Public API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Basic Authentication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('authToken', response.access_token);",
+                  "    pm.collectionVariables.set('authToken', response.access_token);",
+                  "    console.log('Token saved:', response.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"your-xgt-username\",\n  \"password\": \"your-xgt-password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/xgt/basic",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "xgt", "basic"]
+            },
+            "description": "Authenticate with XGT basic credentials"
+          }
+        },
+        {
+          "name": "OAuth2 Token (Swagger UI Compatible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "your-xgt-username"
+                },
+                {
+                  "key": "password",
+                  "value": "your-xgt-password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/xgt/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "xgt", "token"]
+            },
+            "description": "OAuth2-compatible authentication for Swagger UI"
+          }
+        },
+        {
+          "name": "Validate Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "validate"]
+            },
+            "description": "Validate current JWT token"
+          }
+        },
+        {
+          "name": "Get Current User Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get information about the authenticated user"
+          }
+        },
+        {
+          "name": "Test XGT Connection",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/test-connection",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "test-connection"]
+            },
+            "description": "Test the current user's XGT connection"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "health"]
+            },
+            "description": "Comprehensive health check with XGT server status"
+          }
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "ready"]
+            },
+            "description": "Kubernetes readiness probe"
+          }
+        },
+        {
+          "name": "Liveness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "live"]
+            },
+            "description": "Kubernetes liveness probe"
+          }
+        },
+        {
+          "name": "Version Information",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/version",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "version"]
+            },
+            "description": "Detailed version information for API and XGT components"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Datasets",
+      "item": [
+        {
+          "name": "List All Datasets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/datasets?include_empty=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "datasets"],
+              "query": [
+                {
+                  "key": "include_empty",
+                  "value": "false",
+                  "description": "Include datasets with no frames"
+                }
+              ]
+            },
+            "description": "List all datasets available to the user"
+          }
+        },
+        {
+          "name": "Get Specific Dataset",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/datasets/your-dataset-name",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "datasets", "your-dataset-name"]
+            },
+            "description": "Get detailed information about a specific dataset"
+          }
+        },
+        {
+          "name": "Get Dataset Schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/datasets/your-dataset-name/schema?fully_qualified=false&add_missing_edge_nodes=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "datasets", "your-dataset-name", "schema"],
+              "query": [
+                {
+                  "key": "fully_qualified",
+                  "value": "false",
+                  "description": "Include namespace in frame names"
+                },
+                {
+                  "key": "add_missing_edge_nodes",
+                  "value": "false",
+                  "description": "Include missing edge nodes in schema"
+                }
+              ]
+            },
+            "description": "Get schema information for a specific dataset"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Frames",
+      "item": [
+        {
+          "name": "List All Frames",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/frames?namespace=&frame_type=",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "frames"],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "",
+                  "description": "Filter by namespace"
+                },
+                {
+                  "key": "frame_type",
+                  "value": "",
+                  "description": "Filter by frame type: vertex, edge, table"
+                }
+              ]
+            },
+            "description": "List all frames available to the user"
+          }
+        },
+        {
+          "name": "Get Frame Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/frames/your-frame-name/data?offset=0&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "frames", "your-frame-name", "data"],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Starting row offset"
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "Number of rows to return (max 10000)"
+                }
+              ]
+            },
+            "description": "Get data from a specific frame with pagination"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Query Execution",
+      "item": [
+        {
+          "name": "Execute Cypher Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('lastJobId', response.job_id);",
+                  "    pm.collectionVariables.set('lastJobId', response.job_id);",
+                  "    console.log('Job ID saved:', response.job_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"MATCH (n) RETURN n LIMIT 5\",\n  \"parameters\": {\n    \"limit\": 5\n  },\n  \"format\": \"json\",\n  \"limit\": 1000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/public/datasets/your-dataset-name/query",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "datasets", "your-dataset-name", "query"]
+            },
+            "description": "Execute a Cypher query against a dataset"
+          }
+        },
+        {
+          "name": "Get Query Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/query/{{lastJobId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "query", "{{lastJobId}}", "status"]
+            },
+            "description": "Get the status of a query job"
+          }
+        },
+        {
+          "name": "Get Query Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/query/{{lastJobId}}/results?offset=0&limit=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "query", "{{lastJobId}}", "results"],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Starting row offset"
+                },
+                {
+                  "key": "limit",
+                  "value": "1000",
+                  "description": "Number of rows to return"
+                }
+              ]
+            },
+            "description": "Get results from a completed query job"
+          }
+        },
+        {
+          "name": "List Query History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/query/jobs?page=1&per_page=50&status=&dataset_name=",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "query", "jobs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (1-based)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "50",
+                  "description": "Number of jobs per page (max 200)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by job status"
+                },
+                {
+                  "key": "dataset_name",
+                  "value": "",
+                  "description": "Filter by dataset name"
+                }
+              ]
+            },
+            "description": "List all query jobs in history with pagination"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "lastJobId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
