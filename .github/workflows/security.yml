@@ -40,27 +40,8 @@ jobs:
         name: dependency-scan-report
         path: safety-report.json
 
-  code-security-scan:
-    name: Code Security Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: python
-    
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
-    
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+  # CodeQL analysis is now handled by GitHub's automatic code scanning
+  # The separate CodeQL workflow runs automatically on pushes and PRs
 
   secret-scan:
     name: Secret Detection
