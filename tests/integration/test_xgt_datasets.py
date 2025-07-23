@@ -23,9 +23,7 @@ class TestXGTDatasetsIntegration:
             import xgt
 
             # Try to connect to XGT directly to verify it's running
-            conn = xgt.Connection(
-                host="localhost", port=4367, auth=xgt.BasicAuth(username="admin", password="")
-            )
+            conn = xgt.Connection(host="localhost", port=4367, auth=xgt.BasicAuth(username="admin", password=""))
             conn.close()
             return True
         except Exception:
@@ -40,9 +38,7 @@ class TestXGTDatasetsIntegration:
         except Exception:
             return False
 
-    def test_datasets_endpoint_with_xgt(
-        self, base_url: str, xgt_available: bool, api_server_running: bool
-    ):
+    def test_datasets_endpoint_with_xgt(self, base_url: str, xgt_available: bool, api_server_running: bool):
         """Test datasets endpoint with real XGT connection."""
         if not xgt_available:
             pytest.skip("XGT server not available")

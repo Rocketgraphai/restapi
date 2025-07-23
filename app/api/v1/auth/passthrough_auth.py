@@ -399,9 +399,7 @@ async def test_xgt_connection(
 
         # Get server information
         try:
-            namespace = getattr(
-                connection, "get_default_namespace", lambda: current_user.namespace
-            )()
+            namespace = getattr(connection, "get_default_namespace", lambda: current_user.namespace)()
             server_version = getattr(connection, "server_version", "unknown")
 
             server_info = {"version": str(server_version), "namespace": namespace}

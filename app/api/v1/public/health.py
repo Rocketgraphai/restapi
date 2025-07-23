@@ -73,9 +73,7 @@ async def health_check():
                 "ssl_server_cn": settings.XGT_SERVER_CN,
             }
 
-        connection = xgt.Connection(
-            host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags
-        )
+        connection = xgt.Connection(host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags)
 
         # Test actual server connectivity and protocol compatibility
         server_version = connection.server_version
@@ -88,25 +86,14 @@ async def health_check():
         client_protocol = xgt.connection.__protobuf_version__  # e.g., (1, 1, 0)
 
         # Use same compatibility logic as SDK: server_protocol >= client_protocol
-        if (
-            server_protocol
-            and client_protocol
-            and len(server_protocol) >= 2
-            and len(client_protocol) >= 2
-        ):
+        if server_protocol and client_protocol and len(server_protocol) >= 2 and len(client_protocol) >= 2:
             # Compare as tuples - Python does lexicographic comparison
             protocol_compatible = server_protocol >= client_protocol
 
             if protocol_compatible:
-                services["xgt"] = (
-                    f"healthy (server:v{server_version} protocol:{server_protocol}, "
-                    f"sdk:v{sdk_version} client_protocol:{client_protocol})"
-                )
+                services["xgt"] = f"healthy (server:v{server_version} protocol:{server_protocol}, sdk:v{sdk_version} client_protocol:{client_protocol})"
             else:
-                services["xgt"] = (
-                    f"degraded: protocol incompatible "
-                    f"(server:{server_protocol} < client:{client_protocol})"
-                )
+                services["xgt"] = f"degraded: protocol incompatible (server:{server_protocol} < client:{client_protocol})"
                 overall_status = "degraded"
         else:
             # Fallback if protocol parsing fails
@@ -229,9 +216,7 @@ async def version_info():
             "connection_status": "disconnected",
         },
         "system": {
-            "python_version": (
-                f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-            ),
+            "python_version": (f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"),
             "platform": sys.platform,
         },
     }
@@ -263,9 +248,7 @@ async def version_info():
                     "ssl_server_cn": settings.XGT_SERVER_CN,
                 }
 
-            connection = xgt.Connection(
-                host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags
-            )
+            connection = xgt.Connection(host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags)
 
             # Get server version and protocol
             server_version = connection.server_version
@@ -276,18 +259,11 @@ async def version_info():
             version_info["xgt"]["connection_status"] = "connected"
 
             # Add compatibility check
-            if (
-                server_protocol
-                and client_protocol
-                and len(server_protocol) >= 2
-                and len(client_protocol) >= 2
-            ):
+            if server_protocol and client_protocol and len(server_protocol) >= 2 and len(client_protocol) >= 2:
                 protocol_compatible = server_protocol >= client_protocol
                 version_info["xgt"]["protocol_compatible"] = protocol_compatible
                 if not protocol_compatible:
-                    version_info["xgt"]["compatibility_warning"] = (
-                        f"Server protocol {server_protocol} < Client protocol {client_protocol}"
-                    )
+                    version_info["xgt"]["compatibility_warning"] = f"Server protocol {server_protocol} < Client protocol {client_protocol}"
 
             connection.close()
 

@@ -25,26 +25,18 @@ class QueryRequest(BaseModel):
     """Request model for executing queries."""
 
     query: str = Field(..., description="Cypher query to execute", min_length=1)
-    parameters: Optional[dict[str, Any]] = Field(
-        default=None, description="Query parameters for substitution"
-    )
+    parameters: Optional[dict[str, Any]] = Field(default=None, description="Query parameters for substitution")
     format: str = Field(
         default="json",
         description="Result format (json, csv, parquet)",
         pattern="^(json|csv|parquet)$",
     )
-    limit: Optional[int] = Field(
-        default=None, ge=1, le=1000000, description="Maximum number of results to return"
-    )
+    limit: Optional[int] = Field(default=None, ge=1, le=1000000, description="Maximum number of results to return")
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "query": (
-                    "MATCH (c:Customer)-[p:PURCHASED]->(pr:Product) "
-                    "WHERE pr.category = $category "
-                    "RETURN c.name, p.amount, pr.name LIMIT $limit"
-                ),
+                "query": ("MATCH (c:Customer)-[p:PURCHASED]->(pr:Product) WHERE pr.category = $category RETURN c.name, p.amount, pr.name LIMIT $limit"),
                 "parameters": {"category": "electronics", "limit": 100},
                 "format": "json",
                 "limit": 1000,
@@ -61,9 +53,7 @@ class QueryResponse(BaseModel):
     query: str = Field(..., description="The executed query")
     dataset_name: str = Field(..., description="Dataset the query was executed against")
     submitted_at: float = Field(..., description="Unix timestamp when query was submitted")
-    estimated_completion: Optional[str] = Field(
-        None, description="Estimated completion time (ISO 8601)"
-    )
+    estimated_completion: Optional[str] = Field(None, description="Estimated completion time (ISO 8601)")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -116,9 +106,7 @@ class QueryResultsResponse(BaseModel):
     limit: int = Field(..., description="Number of results requested")
     returned_rows: int = Field(..., description="Number of rows returned")
     total_rows: Optional[int] = Field(None, description="Total number of result rows")
-    result_metadata: Optional[dict[str, Any]] = Field(
-        None, description="Additional result metadata"
-    )
+    result_metadata: Optional[dict[str, Any]] = Field(None, description="Additional result metadata")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -202,9 +190,7 @@ class JobHistoryResponse(BaseModel):
 async def list_job_history(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     page: int = Query(default=1, ge=1, description="Page number (1-based)"),
-    per_page: int = Query(
-        default=50, ge=1, le=200, description="Number of jobs per page (max 200)"
-    ),
+    per_page: int = Query(default=50, ge=1, le=200, description="Number of jobs per page (max 200)"),
     status: Optional[str] = Query(default=None, description="Filter by job status"),
     dataset_name: Optional[str] = Query(default=None, description="Filter by dataset name"),
 ):
@@ -392,9 +378,7 @@ async def execute_query(
 
 
 @router.get("/query/{job_id}/status", response_model=QueryStatusResponse)
-async def get_query_status(
-    job_id: int, current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
-):
+async def get_query_status(job_id: int, current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]):
     """
     Get the status of a query job.
 
@@ -513,9 +497,7 @@ async def get_query_results(
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get query results from XGT using user's credentials
-        results = user_xgt_ops.execute_query(
-            f"/* Get results for job {job_id} with offset {offset} limit {limit} */"
-        )
+        results = user_xgt_ops.execute_query(f"/* Get results for job {job_id} with offset {offset} limit {limit} */")
 
         # For now, return a simplified response structure
         # TODO: Implement proper job result retrieval from XGT using user credentials

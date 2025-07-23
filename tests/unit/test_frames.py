@@ -73,9 +73,7 @@ class TestFrameDataEndpoint:
         assert data["returned_rows"] == 2
 
         # Verify XGT operations was called correctly
-        mock_xgt_ops.get_frame_data.assert_called_once_with(
-            frame_name="ecommerce__customers", offset=0, limit=100
-        )
+        mock_xgt_ops.get_frame_data.assert_called_once_with(frame_name="ecommerce__customers", offset=0, limit=100)
 
     @patch("app.api.v1.public.frames.create_user_xgt_operations")
     def test_get_frame_data_with_pagination(self, mock_create_user_xgt_ops, client):
@@ -355,9 +353,7 @@ class TestFramesListEndpoint:
             },
             {
                 "name": "social",
-                "vertices": [
-                    {"name": "users", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}
-                ],
+                "vertices": [{"name": "users", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}],
                 "edges": [],
             },
         ]
@@ -382,9 +378,7 @@ class TestFramesListEndpoint:
         mock_xgt_ops.datasets_info.return_value = [
             {
                 "name": "ecommerce",
-                "vertices": [
-                    {"name": "customers", "schema": [["id", "TEXT"]], "num_rows": 1000, "key": "id"}
-                ],
+                "vertices": [{"name": "customers", "schema": [["id", "TEXT"]], "num_rows": 1000, "key": "id"}],
                 "edges": [
                     {
                         "name": "purchases",
@@ -521,9 +515,7 @@ class TestFramesListEndpoint:
             },
             {
                 "name": "user_data",
-                "vertices": [
-                    {"name": "customers", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}
-                ],
+                "vertices": [{"name": "customers", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}],
                 "edges": [],
             },
         ]
@@ -609,9 +601,7 @@ class TestFramesListEndpoint:
         mock_xgt_ops.datasets_info.return_value = [
             {
                 "name": "haglin",
-                "vertices": [
-                    {"name": "users", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}
-                ],
+                "vertices": [{"name": "users", "schema": [["id", "TEXT"]], "num_rows": 100, "key": "id"}],
                 "edges": [],
                 "tables": [
                     {

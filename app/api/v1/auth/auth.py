@@ -59,9 +59,7 @@ async def login(
         logger.info(f"Authentication attempt for user: {auth_request.username}")
 
         # Authenticate user and resolve permissions
-        auth_response = auth_service.authenticate_user(
-            username=auth_request.username, password=auth_request.password
-        )
+        auth_response = auth_service.authenticate_user(username=auth_request.username, password=auth_request.password)
 
         logger.info(f"User {auth_request.username} authenticated successfully")
         return auth_response
@@ -121,9 +119,7 @@ async def get_current_user_info(
             email=current_user.email,
             labels=list(current_user.labels),
             auth_time=current_user.auth_time.isoformat(),
-            labels_resolved_at=current_user.labels_resolved_at.isoformat()
-            if current_user.labels_resolved_at
-            else None,
+            labels_resolved_at=current_user.labels_resolved_at.isoformat() if current_user.labels_resolved_at else None,
         )
     except Exception as e:
         logger.error(f"Error getting user info: {e}")
@@ -156,9 +152,7 @@ async def validate_token(
             return TokenValidationResponse(valid=False, user=None, error="Invalid or expired token")
     except Exception as e:
         logger.error(f"Error validating token: {e}")
-        return TokenValidationResponse(
-            valid=False, user=None, error="Token validation service error"
-        )
+        return TokenValidationResponse(valid=False, user=None, error="Token validation service error")
 
 
 @router.post("/refresh", response_model=AuthenticationResponse)
@@ -188,10 +182,7 @@ async def refresh_token(
         # Generate new token with refreshed information
         new_token = auth_service._generate_jwt_token(refreshed_user)
 
-        logger.info(
-            f"Token refreshed for user {current_user.username} "
-            f"with {len(refreshed_user.labels)} labels"
-        )
+        logger.info(f"Token refreshed for user {current_user.username} with {len(refreshed_user.labels)} labels")
 
         return AuthenticationResponse(
             access_token=new_token,

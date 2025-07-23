@@ -99,9 +99,7 @@ class APITester:
 
         auth_data = {"auth_type": "basic", "username": username, "password": password}
 
-        response_data = self.test_endpoint(
-            "Basic Authentication", "POST", "/auth/xgt/basic", auth_data, 200
-        )
+        response_data = self.test_endpoint("Basic Authentication", "POST", "/auth/xgt/basic", auth_data, 200)
 
         if response_data and "access_token" in response_data:
             self.access_token = response_data["access_token"]
@@ -141,9 +139,7 @@ class APITester:
             if server_cn:
                 auth_data["ssl_server_cn"] = server_cn
 
-            response_data = self.test_endpoint(
-                "PKI Authentication", "POST", "/auth/xgt/pki", auth_data, 200
-            )
+            response_data = self.test_endpoint("PKI Authentication", "POST", "/auth/xgt/pki", auth_data, 200)
 
             if response_data and "access_token" in response_data:
                 self.access_token = response_data["access_token"]
@@ -180,10 +176,7 @@ class APITester:
         # Try to authenticate if not already authenticated
         if not self.access_token:
             username = input("Enter XGT username (default: haglin): ").strip() or "haglin"
-            password = (
-                input("Enter XGT password (default: secure_password_123): ").strip()
-                or "secure_password_123"
-            )
+            password = input("Enter XGT password (default: secure_password_123): ").strip() or "secure_password_123"
 
             if not self.authenticate_basic(username, password):
                 self.log_error("Cannot proceed without authentication")
@@ -234,9 +227,7 @@ class APITester:
         # Test with invalid token
         old_token = self.access_token
         self.access_token = "invalid.token.here"
-        self.test_endpoint(
-            "Invalid Token Test", "GET", "/auth/me", expected_status=401, use_auth=True
-        )
+        self.test_endpoint("Invalid Token Test", "GET", "/auth/me", expected_status=401, use_auth=True)
         self.access_token = old_token  # Restore valid token
 
         # Test 6: Performance Tests

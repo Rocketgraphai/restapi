@@ -144,9 +144,7 @@ async def list_frames(
         default=None,
         description="Filter frames by namespace (if not specified, all namespaces except xgt__)",
     ),
-    frame_type: Optional[str] = Query(
-        default=None, description="Filter frames by type (vertex, edge, table)"
-    ),
+    frame_type: Optional[str] = Query(default=None, description="Filter frames by type (vertex, edge, table)"),
 ):
     """
     List all frames across all namespaces.
@@ -258,9 +256,7 @@ async def list_frames(
 
         logger.info(f"Found {len(frames)} frames across {len(namespaces_found)} namespaces")
 
-        return FramesListResponse(
-            frames=frames, total_count=len(frames), namespaces=sorted(namespaces_found)
-        )
+        return FramesListResponse(frames=frames, total_count=len(frames), namespaces=sorted(namespaces_found))
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
@@ -299,9 +295,7 @@ async def get_frame_data(
     frame_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     offset: int = Query(default=0, ge=0, description="Starting offset for data retrieval"),
-    limit: int = Query(
-        default=100, ge=1, le=10000, description="Maximum number of rows to return (max 10,000)"
-    ),
+    limit: int = Query(default=100, ge=1, le=10000, description="Maximum number of rows to return (max 10,000)"),
 ):
     """
     Get data rows from a specific frame.

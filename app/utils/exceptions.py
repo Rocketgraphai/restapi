@@ -11,9 +11,7 @@ from typing import Any, Optional
 class BaseAPIException(Exception):
     """Base exception for all API errors."""
 
-    def __init__(
-        self, message: str, error_code: str = None, details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str, error_code: str = None, details: Optional[dict[str, Any]] = None):
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__
@@ -34,9 +32,7 @@ class XGTConnectionError(BaseAPIException):
 class XGTOperationError(BaseAPIException):
     """Raised when XGT operation fails."""
 
-    def __init__(
-        self, message: str = "XGT operation failed", details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str = "XGT operation failed", details: Optional[dict[str, Any]] = None):
         super().__init__(message, "XGT_OPERATION_ERROR", details)
 
 
@@ -51,18 +47,14 @@ class DatasetNotFoundError(BaseAPIException):
 class UnauthorizedError(BaseAPIException):
     """Raised when user lacks required permissions."""
 
-    def __init__(
-        self, message: str = "Unauthorized access", details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str = "Unauthorized access", details: Optional[dict[str, Any]] = None):
         super().__init__(message, "UNAUTHORIZED", details)
 
 
 class ValidationError(BaseAPIException):
     """Raised when input validation fails."""
 
-    def __init__(
-        self, message: str = "Input validation failed", details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str = "Input validation failed", details: Optional[dict[str, Any]] = None):
         super().__init__(message, "VALIDATION_ERROR", details)
 
 
@@ -102,16 +94,12 @@ class QueryError(BaseAPIException):
 class SchemaError(BaseAPIException):
     """Raised when schema operations fail."""
 
-    def __init__(
-        self, message: str = "Schema operation failed", details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str = "Schema operation failed", details: Optional[dict[str, Any]] = None):
         super().__init__(message, "SCHEMA_ERROR", details)
 
 
 class ConfigurationError(BaseAPIException):
     """Raised when configuration is invalid."""
 
-    def __init__(
-        self, message: str = "Configuration error", details: Optional[dict[str, Any]] = None
-    ):
+    def __init__(self, message: str = "Configuration error", details: Optional[dict[str, Any]] = None):
         super().__init__(message, "CONFIGURATION_ERROR", details)

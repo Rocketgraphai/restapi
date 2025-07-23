@@ -197,11 +197,7 @@ async def list_datasets(
         datasets = []
         for dataset_raw in datasets_raw:
             # Skip empty datasets if not requested
-            if (
-                not include_empty
-                and not dataset_raw.get("vertices")
-                and not dataset_raw.get("edges")
-            ):
+            if not include_empty and not dataset_raw.get("vertices") and not dataset_raw.get("edges"):
                 continue
 
             # Convert vertex frames
@@ -277,12 +273,8 @@ async def list_datasets(
 async def get_dataset_schema(
     dataset_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
-    fully_qualified: bool = Query(
-        default=False, description="Include namespace information in frame names"
-    ),
-    add_missing_edge_nodes: bool = Query(
-        default=False, description="Include missing edge nodes in the schema"
-    ),
+    fully_qualified: bool = Query(default=False, description="Include namespace information in frame names"),
+    add_missing_edge_nodes: bool = Query(default=False, description="Include missing edge nodes in the schema"),
 ):
     """
     Get schema information for a specific dataset.
@@ -327,9 +319,7 @@ async def get_dataset_schema(
                 for prop in node_raw["properties"]
             ]
 
-            nodes.append(
-                NodeSchema(name=node_raw["name"], properties=properties, key=node_raw["key"])
-            )
+            nodes.append(NodeSchema(name=node_raw["name"], properties=properties, key=node_raw["key"]))
 
         # Convert edges to response format
         edges = []

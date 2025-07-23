@@ -43,9 +43,7 @@ class TestRunner:
     def log(self, message: str, color: str = Colors.NC):
         """Print colored log message"""
 
-    def run_command(
-        self, cmd: list[str], name: str, cwd: Optional[Path] = None, env: Optional[dict] = None
-    ) -> tuple[bool, str]:
+    def run_command(self, cmd: list[str], name: str, cwd: Optional[Path] = None, env: Optional[dict] = None) -> tuple[bool, str]:
         """Run a command and capture output"""
         self.log(f"🔄 Running: {name}", Colors.BLUE)
 
@@ -111,9 +109,7 @@ class TestRunner:
         self.log("🐍 Setting up Python environment...", Colors.CYAN)
 
         # Install/upgrade pip
-        success, _ = self.run_command(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "Upgrade pip"
-        )
+        success, _ = self.run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "Upgrade pip")
         if not success:
             return False
 
@@ -227,9 +223,7 @@ class TestRunner:
         xgt_version = self.args.xgt_version or "latest"
 
         # Pull XGT image
-        success, _ = self.run_command(
-            ["docker", "pull", f"rocketgraph/xgt:{xgt_version}"], f"Pull XGT image ({xgt_version})"
-        )
+        success, _ = self.run_command(["docker", "pull", f"rocketgraph/xgt:{xgt_version}"], f"Pull XGT image ({xgt_version})")
         if not success:
             return False
 
@@ -292,9 +286,7 @@ class TestRunner:
     def run_xgt_integration_tests(self) -> bool:
         """Run XGT integration tests (mirrors xgt-integration-test job)"""
         if not self.args.with_xgt:
-            self.log(
-                "\n⏭️  Skipping XGT integration tests (use --with-xgt to enable)", Colors.YELLOW
-            )
+            self.log("\n⏭️  Skipping XGT integration tests (use --with-xgt to enable)", Colors.YELLOW)
             return True
 
         self.log("\n🧪 XGT Integration Tests", Colors.PURPLE)
@@ -326,9 +318,7 @@ class TestRunner:
         if self.xgt_container:
             self.log("📋 XGT Container Logs:", Colors.YELLOW)
             try:
-                result = subprocess.run(
-                    ["docker", "logs", self.xgt_container], capture_output=True, text=True
-                )
+                result = subprocess.run(["docker", "logs", self.xgt_container], capture_output=True, text=True)
                 if result.stderr:
                     pass
             except:
@@ -442,20 +432,14 @@ Examples:
         """,
     )
 
-    parser.add_argument(
-        "--with-xgt", action="store_true", help="Include XGT integration tests (requires Docker)"
-    )
-    parser.add_argument(
-        "--xgt-version", default="latest", help="XGT Docker image version (default: latest)"
-    )
+    parser.add_argument("--with-xgt", action="store_true", help="Include XGT integration tests (requires Docker)")
+    parser.add_argument("--xgt-version", default="latest", help="XGT Docker image version (default: latest)")
     parser.add_argument(
         "--all-python-versions",
         action="store_true",
         help="Test against multiple Python versions if available",
     )
-    parser.add_argument(
-        "--security-scans", action="store_true", help="Include additional security scans"
-    )
+    parser.add_argument("--security-scans", action="store_true", help="Include additional security scans")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on first test failure")
 
     args = parser.parse_args()

@@ -44,9 +44,7 @@ class XGTPKIAuthRequest(BaseModel):
     # Certificate files (PEM format, base64 encoded for JSON transport)
     client_cert: str = Field(..., description="Client certificate (PEM format, base64 encoded)")
     client_key: str = Field(..., description="Client private key (PEM format, base64 encoded)")
-    ca_chain: Optional[str] = Field(
-        None, description="CA certificate chain (PEM format, base64 encoded)"
-    )
+    ca_chain: Optional[str] = Field(None, description="CA certificate chain (PEM format, base64 encoded)")
 
     # SSL configuration
     ssl_server_cert: Optional[str] = Field(None, description="Server certificate path or content")

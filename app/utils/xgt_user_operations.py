@@ -73,9 +73,7 @@ class UserXGTOperations:
                 conn_flags = self._get_proxy_pki_auth_flags()
 
             else:
-                raise XGTConnectionError(
-                    f"Unsupported auth type: {self.user_credentials.auth_type}"
-                )
+                raise XGTConnectionError(f"Unsupported auth type: {self.user_credentials.auth_type}")
 
             # Create connection
             connection = xgt.Connection(
@@ -223,9 +221,7 @@ class UserXGTOperations:
                             else:
                                 result = conn.run(query)
                         else:
-                            raise XGTOperationError(
-                                "No supported query execution method found on connection"
-                            )
+                            raise XGTOperationError("No supported query execution method found on connection")
 
                 # Convert result to list of dictionaries
                 results = []
@@ -264,9 +260,7 @@ class UserXGTOperations:
         """Get the user's default namespace."""
         try:
             with self.connection() as conn:
-                return getattr(
-                    conn, "get_default_namespace", lambda: self.user_credentials.username
-                )()
+                return getattr(conn, "get_default_namespace", lambda: self.user_credentials.username)()
         except Exception as e:
             logger.warning(f"Could not get user namespace: {e}")
             return self.user_credentials.username or "default"
@@ -380,28 +374,10 @@ class UserXGTOperations:
                 # Process edge frames
                 for frame in edge_frames:
                     # Try different possible attribute names for source/target
-                    source_frame = (
-                        getattr(frame, "source_name", None)
-                        or getattr(frame, "source_frame", None)
-                        or getattr(frame, "source", None)
-                        or "unknown_source"
-                    )
-                    target_frame = (
-                        getattr(frame, "target_name", None)
-                        or getattr(frame, "target_frame", None)
-                        or getattr(frame, "target", None)
-                        or "unknown_target"
-                    )
-                    source_key = (
-                        getattr(frame, "source_key", None)
-                        or getattr(frame, "source_column", None)
-                        or "id"
-                    )
-                    target_key = (
-                        getattr(frame, "target_key", None)
-                        or getattr(frame, "target_column", None)
-                        or "id"
-                    )
+                    source_frame = getattr(frame, "source_name", None) or getattr(frame, "source_frame", None) or getattr(frame, "source", None) or "unknown_source"
+                    target_frame = getattr(frame, "target_name", None) or getattr(frame, "target_frame", None) or getattr(frame, "target", None) or "unknown_target"
+                    source_key = getattr(frame, "source_key", None) or getattr(frame, "source_column", None) or "id"
+                    target_key = getattr(frame, "target_key", None) or getattr(frame, "target_column", None) or "id"
 
                     frame_info = {
                         "name": frame.name,
@@ -481,10 +457,7 @@ class UserXGTOperations:
 
                 # Check vertex frames
                 for vframe in conn.get_frames(frame_type="Vertex"):
-                    if (
-                        vframe.name == frame_name
-                        or f"{self.get_user_namespace()}__{vframe.name}" == frame_name
-                    ):
+                    if vframe.name == frame_name or f"{self.get_user_namespace()}__{vframe.name}" == frame_name:
                         frame = vframe
                         frame_type = "vertex"
                         break
@@ -492,10 +465,7 @@ class UserXGTOperations:
                 # Check edge frames if not found
                 if not frame:
                     for eframe in conn.get_frames(frame_type="Edge"):
-                        if (
-                            eframe.name == frame_name
-                            or f"{self.get_user_namespace()}__{eframe.name}" == frame_name
-                        ):
+                        if eframe.name == frame_name or f"{self.get_user_namespace()}__{eframe.name}" == frame_name:
                             frame = eframe
                             frame_type = "edge"
                             break
@@ -503,10 +473,7 @@ class UserXGTOperations:
                 # Check table frames if not found
                 if not frame:
                     for tframe in conn.get_frames(frame_type="Table"):
-                        if (
-                            tframe.name == frame_name
-                            or f"{self.get_user_namespace()}__{tframe.name}" == frame_name
-                        ):
+                        if tframe.name == frame_name or f"{self.get_user_namespace()}__{tframe.name}" == frame_name:
                             frame = tframe
                             frame_type = "table"
                             break
@@ -522,9 +489,7 @@ class UserXGTOperations:
                 # Query the frame data
                 if columns:
                     column_list = ", ".join(columns)
-                    query = (
-                        f"MATCH (n:{frame.name}) RETURN {column_list} SKIP {offset} LIMIT {limit}"
-                    )
+                    query = f"MATCH (n:{frame.name}) RETURN {column_list} SKIP {offset} LIMIT {limit}"
                 else:
                     query = f"MATCH (n:{frame.name}) RETURN n SKIP {offset} LIMIT {limit}"
 
@@ -536,11 +501,7 @@ class UserXGTOperations:
                     for record in result:
                         if isinstance(record, dict):
                             # Extract values in column order
-                            row = (
-                                [record.get(col, None) for col in columns]
-                                if columns
-                                else list(record.values())
-                            )
+                            row = [record.get(col, None) for col in columns] if columns else list(record.values())
                         else:
                             row = list(record) if hasattr(record, "__iter__") else [record]
                         rows.append(row)
@@ -564,9 +525,7 @@ class UserXGTOperations:
             logger.error(f"Failed to get frame data: {e}")
             raise XGTOperationError(f"Frame data retrieval failed: {str(e)}")
 
-    def get_schema(
-        self, dataset_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False
-    ) -> dict[str, Any]:
+    def get_schema(self, dataset_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False) -> dict[str, Any]:
         """
         Get schema information for a dataset.
 
@@ -633,16 +592,8 @@ class UserXGTOperations:
                     target_name = getattr(frame, "target", "unknown")
 
                     if fully_qualified:
-                        source_name = (
-                            f"{user_namespace}__{source_name}"
-                            if source_name != "unknown"
-                            else source_name
-                        )
-                        target_name = (
-                            f"{user_namespace}__{target_name}"
-                            if target_name != "unknown"
-                            else target_name
-                        )
+                        source_name = f"{user_namespace}__{source_name}" if source_name != "unknown" else source_name
+                        target_name = f"{user_namespace}__{target_name}" if target_name != "unknown" else target_name
 
                     edge_info = {
                         "name": edge_name,

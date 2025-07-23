@@ -238,10 +238,7 @@ class TestHealthEndpoint:
         data = response.json()
 
         assert data["status"] == "healthy"
-        assert (
-            "healthy (server:v2.3.5 protocol:(1, 2, 0), sdk:v2.3.0 client_protocol:(1, 1, 0))"
-            in data["services"]["xgt"]
-        )
+        assert "healthy (server:v2.3.5 protocol:(1, 2, 0), sdk:v2.3.0 client_protocol:(1, 1, 0))" in data["services"]["xgt"]
 
     @patch("app.api.v1.public.health.get_settings")
     def test_health_check_malformed_version(self, mock_get_settings, client):

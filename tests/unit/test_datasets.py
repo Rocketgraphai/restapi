@@ -238,17 +238,12 @@ class TestDatasetSchemaEndpoint:
         mock_xgt_ops.get_schema.return_value = {"graph": "test_dataset", "nodes": [], "edges": []}
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get(
-            "/api/v1/public/datasets/test_dataset/schema"
-            "?fully_qualified=true&add_missing_edge_nodes=true"
-        )
+        response = client.get("/api/v1/public/datasets/test_dataset/schema?fully_qualified=true&add_missing_edge_nodes=true")
 
         assert response.status_code == 200
 
         # Verify that the parameters were passed to get_schema
-        mock_xgt_ops.get_schema.assert_called_once_with(
-            dataset_name="test_dataset", fully_qualified=True, add_missing_edge_nodes=True
-        )
+        mock_xgt_ops.get_schema.assert_called_once_with(dataset_name="test_dataset", fully_qualified=True, add_missing_edge_nodes=True)
 
     @patch("app.api.v1.public.datasets.create_user_xgt_operations")
     def test_get_dataset_schema_xgt_error(self, mock_create_user_xgt_ops, client):

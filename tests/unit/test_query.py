@@ -67,9 +67,7 @@ class TestQueryExecution:
         assert "submitted_at" in data
 
         # Verify XGT operations was called correctly
-        mock_xgt_ops.execute_query.assert_called_once_with(
-            "MATCH (c:Customer) RETURN c.name LIMIT 10"
-        )
+        mock_xgt_ops.execute_query.assert_called_once_with("MATCH (c:Customer) RETURN c.name LIMIT 10")
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_execute_query_with_parameters(self, mock_create_user_xgt_ops, client):
@@ -102,9 +100,7 @@ class TestQueryExecution:
         from app.utils.exceptions import XGTOperationError
 
         mock_xgt_ops = Mock()
-        mock_xgt_ops.execute_query.side_effect = XGTOperationError(
-            "INTO clauses not allowed in public API"
-        )
+        mock_xgt_ops.execute_query.side_effect = XGTOperationError("INTO clauses not allowed in public API")
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         query_data = {"query": "MATCH (c:Customer) RETURN c.name INTO temp_table", "format": "json"}
@@ -142,9 +138,7 @@ class TestQueryExecution:
     def test_execute_query_validation_error(self, client):
         """Test query execution with invalid request format."""
         # Empty query
-        response = client.post(
-            "/api/v1/public/datasets/test_dataset/query", json={"query": "", "format": "json"}
-        )
+        response = client.post("/api/v1/public/datasets/test_dataset/query", json={"query": "", "format": "json"})
         assert response.status_code == 422
 
         # Invalid format
@@ -155,9 +149,7 @@ class TestQueryExecution:
         assert response.status_code == 422
 
         # Missing query
-        response = client.post(
-            "/api/v1/public/datasets/test_dataset/query", json={"format": "json"}
-        )
+        response = client.post("/api/v1/public/datasets/test_dataset/query", json={"format": "json"})
         assert response.status_code == 422
 
 
@@ -264,9 +256,7 @@ class TestQueryResults:
         assert data["limit"] == 1000
 
         # Verify XGT operations was called with dummy query
-        mock_xgt_ops.execute_query.assert_called_once_with(
-            "/* Get results for job 12345 with offset 0 limit 1000 */"
-        )
+        mock_xgt_ops.execute_query.assert_called_once_with("/* Get results for job 12345 with offset 0 limit 1000 */")
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_get_query_results_with_pagination(self, mock_create_user_xgt_ops, client):
@@ -286,9 +276,7 @@ class TestQueryResults:
         assert data["returned_rows"] == 1
 
         # Verify execute_query was called with dummy query string
-        mock_xgt_ops.execute_query.assert_called_once_with(
-            "/* Get results for job 12346 with offset 50 limit 25 */"
-        )
+        mock_xgt_ops.execute_query.assert_called_once_with("/* Get results for job 12346 with offset 50 limit 25 */")
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_get_query_results_not_completed(self, mock_create_user_xgt_ops, client):

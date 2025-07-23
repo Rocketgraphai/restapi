@@ -97,9 +97,7 @@ class XGTOperations:
             XGTConnectionError: If connection fails
         """
         if xgt is None:
-            raise XGTConnectionError(
-                "XGT library not available - install xgt package for full functionality"
-            )
+            raise XGTConnectionError("XGT library not available - install xgt package for full functionality")
 
         # Check if XGT credentials are provided
         if not self.settings.XGT_PASSWORD and self.settings.is_production:
@@ -107,9 +105,7 @@ class XGTOperations:
 
         try:
             # Get connection settings from configuration
-            auth = xgt.BasicAuth(
-                username=self.settings.XGT_USERNAME, password=self.settings.XGT_PASSWORD
-            )
+            auth = xgt.BasicAuth(username=self.settings.XGT_USERNAME, password=self.settings.XGT_PASSWORD)
 
             conn_flags = {}
             if self.settings.XGT_USE_SSL:
@@ -135,9 +131,7 @@ class XGTOperations:
         except Exception as e:
             logger.error(f"Failed to create XGT connection: {e}")
             if "Connection refused" in str(e):
-                raise XGTConnectionError(
-                    "Cannot connect to XGT server - ensure XGT is running and accessible"
-                )
+                raise XGTConnectionError("Cannot connect to XGT server - ensure XGT is running and accessible")
             raise XGTConnectionError(f"Connection failed: {str(e)}")
 
     @contextmanager
@@ -186,9 +180,7 @@ class XGTOperations:
 
         return name
 
-    def _get_edge_schema(
-        self, edge_frame, node_set: set, fully_qualified: bool, default_namespace: str
-    ) -> dict:
+    def _get_edge_schema(self, edge_frame, node_set: set, fully_qualified: bool, default_namespace: str) -> dict:
         """
         Extract schema information for an edge frame.
 
@@ -231,9 +223,7 @@ class XGTOperations:
 
         return schema_map
 
-    def _get_node_schema(
-        self, node_frame, node_set: set, fully_qualified: bool, default_namespace: str
-    ) -> dict:
+    def _get_node_schema(self, node_frame, node_set: set, fully_qualified: bool, default_namespace: str) -> dict:
         """
         Extract schema information for a node frame.
 
@@ -308,21 +298,14 @@ class XGTOperations:
 
                 # Filter by permissions if requested
                 if filter_create_rows:
-                    node_frames = [
-                        n for n in node_frames if n.user_permissions.get("create_rows", False)
-                    ]
-                    edge_frames = [
-                        e for e in edge_frames if e.user_permissions.get("create_rows", False)
-                    ]
+                    node_frames = [n for n in node_frames if n.user_permissions.get("create_rows", False)]
+                    edge_frames = [e for e in edge_frames if e.user_permissions.get("create_rows", False)]
 
                 node_set = {n.name for n in node_frames}
                 missing_nodes = set()
 
                 # Get edge schemas
-                edge_props = [
-                    self._get_edge_schema(e, node_set, fully_qualified, default_namespace)
-                    for e in edge_frames
-                ]
+                edge_props = [self._get_edge_schema(e, node_set, fully_qualified, default_namespace) for e in edge_frames]
 
                 # Add missing edge nodes if requested
                 if add_missing_edge_nodes:
@@ -333,23 +316,14 @@ class XGTOperations:
                             missing_nodes.add(e.target_name)
 
                     if missing_nodes:
-                        additional_nodes = conn.get_frames(
-                            names=list(missing_nodes), frame_type="vertex"
-                        )
+                        additional_nodes = conn.get_frames(names=list(missing_nodes), frame_type="vertex")
                         node_frames.extend(additional_nodes)
 
                         if filter_create_rows:
-                            node_frames = [
-                                n
-                                for n in node_frames
-                                if n.user_permissions.get("create_rows", False)
-                            ]
+                            node_frames = [n for n in node_frames if n.user_permissions.get("create_rows", False)]
 
                 # Get node schemas
-                node_props = [
-                    self._get_node_schema(n, node_set, fully_qualified, default_namespace)
-                    for n in node_frames
-                ]
+                node_props = [self._get_node_schema(n, node_set, fully_qualified, default_namespace) for n in node_frames]
 
                 # Sort results
                 edge_props.sort(key=lambda x: x["name"])
@@ -604,23 +578,17 @@ class XGTOperations:
                                         }
                                     else:
                                         # Results are None, fall through to try table frame lookup
-                                        logger.debug(
-                                            f"Job {job_id} get_data() returned None, trying table frame lookup"
-                                        )
+                                        logger.debug(f"Job {job_id} get_data() returned None, trying table frame lookup")
 
                                 except AttributeError as attr_error:
-                                    logger.debug(
-                                        f"AttributeError getting data from job: {attr_error}"
-                                    )
+                                    logger.debug(f"AttributeError getting data from job: {attr_error}")
 
                                 # Whether we got None from get_data() or AttributeError, try table frame lookup
                                 # For queries with INTO clause, results are stored in table frames
                                 try:
                                     # Try to get job information to find associated table frame
                                     job_info = getattr(job, "info", {})
-                                    table_name = job_info.get("result_table") or job_info.get(
-                                        "output_table"
-                                    )
+                                    table_name = job_info.get("result_table") or job_info.get("output_table")
 
                                     if not table_name:
                                         # Try to extract table name from the query's INTO clause
@@ -630,41 +598,29 @@ class XGTOperations:
                                             getattr(
                                                 job,
                                                 "query_text",
-                                                getattr(
-                                                    job, "cypher", getattr(job, "description", "")
-                                                ),
+                                                getattr(job, "cypher", getattr(job, "description", "")),
                                             ),
                                         )
                                         logger.debug(f"Query text for job {job_id}: {query_text}")
 
                                         # If no query text from job object, try to get it from in-memory storage
                                         if not query_text:
-                                            logger.debug(
-                                                "No query text in job object, trying in-memory storage"
-                                            )
+                                            logger.debug("No query text in job object, trying in-memory storage")
                                             if hasattr(self, "_jobs") and job_id in self._jobs:
                                                 job_info = self._jobs[job_id]
                                                 query_text = job_info.get("query", "")
-                                                logger.debug(
-                                                    f"Found query text from in-memory storage: {query_text}"
-                                                )
+                                                logger.debug(f"Found query text from in-memory storage: {query_text}")
                                             else:
-                                                logger.debug(
-                                                    f"Job {job_id} not found in in-memory storage"
-                                                )
+                                                logger.debug(f"Job {job_id} not found in in-memory storage")
 
                                         if query_text:
                                             # Look for INTO clause in the query
                                             import re
 
-                                            into_match = re.search(
-                                                r"INTO\s+([^\s;]+)", query_text, re.IGNORECASE
-                                            )
+                                            into_match = re.search(r"INTO\s+([^\s;]+)", query_text, re.IGNORECASE)
                                             if into_match:
                                                 table_name = into_match.group(1).strip("`\"'")
-                                                logger.debug(
-                                                    f"Found table name from INTO clause: {table_name}"
-                                                )
+                                                logger.debug(f"Found table name from INTO clause: {table_name}")
                                                 # If table name doesn't have namespace, try current namespace
                                                 if "__" not in table_name:
                                                     current_namespace = getattr(
@@ -673,12 +629,8 @@ class XGTOperations:
                                                         conn.get_default_namespace(),
                                                     )
                                                     if current_namespace:
-                                                        table_name = (
-                                                            f"{current_namespace}__{table_name}"
-                                                        )
-                                                        logger.debug(
-                                                            f"Added namespace to table name: {table_name}"
-                                                        )
+                                                        table_name = f"{current_namespace}__{table_name}"
+                                                        logger.debug(f"Added namespace to table name: {table_name}")
                                             else:
                                                 logger.debug("No INTO clause found in query")
                                         else:
@@ -689,12 +641,8 @@ class XGTOperations:
                                         # Get data from the table frame
                                         try:
                                             table_frame = conn.get_frame(table_name)
-                                            table_data = table_frame.get_data(
-                                                offset=offset, length=length
-                                            )
-                                            logger.debug(
-                                                f"Retrieved {len(table_data) if table_data else 0} rows from table frame"
-                                            )
+                                            table_data = table_frame.get_data(offset=offset, length=length)
+                                            logger.debug(f"Retrieved {len(table_data) if table_data else 0} rows from table frame")
 
                                             # Convert table data to results format
                                             if table_data:
@@ -702,95 +650,52 @@ class XGTOperations:
                                                 columns = []
                                                 try:
                                                     # Try to get columns from job schema first
-                                                    logger.debug(
-                                                        f"Job {job_id} has schema attribute: {hasattr(job, 'schema')}"
-                                                    )
+                                                    logger.debug(f"Job {job_id} has schema attribute: {hasattr(job, 'schema')}")
                                                     if hasattr(job, "schema"):
-                                                        logger.debug(
-                                                            f"Job {job_id} schema value: {job.schema}"
-                                                        )
-                                                        logger.debug(
-                                                            f"Job {job_id} schema type: {type(job.schema)}"
-                                                        )
+                                                        logger.debug(f"Job {job_id} schema value: {job.schema}")
+                                                        logger.debug(f"Job {job_id} schema type: {type(job.schema)}")
 
                                                     if hasattr(job, "schema") and job.schema:
-                                                        logger.debug(
-                                                            f"Job {job_id} has schema: {job.schema}"
-                                                        )
+                                                        logger.debug(f"Job {job_id} has schema: {job.schema}")
                                                         if hasattr(job.schema, "__iter__"):
                                                             columns = []
                                                             for col in job.schema:
                                                                 if hasattr(col, "name"):
                                                                     columns.append(col.name)
-                                                                elif hasattr(
-                                                                    col, "__iter__"
-                                                                ) and not isinstance(col, str):
+                                                                elif hasattr(col, "__iter__") and not isinstance(col, str):
                                                                     # Schema might be [column_name, type] tuples
                                                                     columns.append(col[0])
                                                                 else:
                                                                     columns.append(str(col))
                                                         else:
                                                             columns = [str(job.schema)]
-                                                        logger.debug(
-                                                            f"Extracted columns from job schema: {columns}"
-                                                        )
+                                                        logger.debug(f"Extracted columns from job schema: {columns}")
                                                     # Fall back to table frame schema
                                                     elif hasattr(table_frame, "schema"):
-                                                        logger.debug(
-                                                            "Using table frame schema instead"
-                                                        )
+                                                        logger.debug("Using table frame schema instead")
                                                         if hasattr(table_frame.schema, "__iter__"):
                                                             columns = []
                                                             for col in table_frame.schema:
                                                                 if hasattr(col, "name"):
                                                                     columns.append(col.name)
-                                                                elif hasattr(
-                                                                    col, "__iter__"
-                                                                ) and not isinstance(col, str):
+                                                                elif hasattr(col, "__iter__") and not isinstance(col, str):
                                                                     # Schema might be [column_name, type] tuples
                                                                     columns.append(col[0])
                                                                 else:
                                                                     columns.append(str(col))
                                                         else:
-                                                            columns = (
-                                                                [
-                                                                    f"col_{i}"
-                                                                    for i in range(
-                                                                        len(table_data[0])
-                                                                    )
-                                                                ]
-                                                                if table_data
-                                                                else []
-                                                            )
+                                                            columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
                                                     else:
-                                                        logger.debug(
-                                                            "No schema found, using generic column names"
-                                                        )
-                                                        columns = (
-                                                            [
-                                                                f"col_{i}"
-                                                                for i in range(len(table_data[0]))
-                                                            ]
-                                                            if table_data
-                                                            else []
-                                                        )
+                                                        logger.debug("No schema found, using generic column names")
+                                                        columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
                                                 except Exception as e:
                                                     logger.debug(f"Exception getting columns: {e}")
-                                                    columns = (
-                                                        [
-                                                            f"col_{i}"
-                                                            for i in range(len(table_data[0]))
-                                                        ]
-                                                        if table_data
-                                                        else []
-                                                    )
+                                                    columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
 
                                                 # Convert rows to the expected format
                                                 rows = []
                                                 for row in table_data:
-                                                    if hasattr(row, "__iter__") and not isinstance(
-                                                        row, str
-                                                    ):
+                                                    if hasattr(row, "__iter__") and not isinstance(row, str):
                                                         # Row is already a list/tuple
                                                         rows.append(list(row))
                                                     else:
@@ -807,9 +712,7 @@ class XGTOperations:
                                                     "total_rows": getattr(job, "num_rows", None),
                                                 }
                                         except Exception as frame_error:
-                                            logger.warning(
-                                                f"Failed to get data from table frame {table_name}: {frame_error}"
-                                            )
+                                            logger.warning(f"Failed to get data from table frame {table_name}: {frame_error}")
                                     else:
                                         logger.debug(f"No table name found for job {job_id}")
 
@@ -872,9 +775,7 @@ class XGTOperations:
                                 try:
                                     # Try to get job information to find associated table frame
                                     job_info_attr = getattr(job, "info", {})
-                                    table_name = job_info_attr.get(
-                                        "result_table"
-                                    ) or job_info_attr.get("output_table")
+                                    table_name = job_info_attr.get("result_table") or job_info_attr.get("output_table")
 
                                     if not table_name:
                                         # Try to extract table name from the query's INTO clause
@@ -899,9 +800,7 @@ class XGTOperations:
                                             # Look for INTO clause in the query
                                             import re
 
-                                            into_match = re.search(
-                                                r"INTO\s+([^\s;]+)", query_text, re.IGNORECASE
-                                            )
+                                            into_match = re.search(r"INTO\s+([^\s;]+)", query_text, re.IGNORECASE)
                                             if into_match:
                                                 table_name = into_match.group(1).strip("`\"'")
                                                 # If table name doesn't have namespace, try current namespace
@@ -915,16 +814,12 @@ class XGTOperations:
                                                         ),
                                                     )
                                                     if current_namespace:
-                                                        table_name = (
-                                                            f"{current_namespace}__{table_name}"
-                                                        )
+                                                        table_name = f"{current_namespace}__{table_name}"
 
                                     if table_name:
                                         # Get data from the table frame
                                         table_frame = conn.get_frame(table_name)
-                                        table_data = table_frame.get_data(
-                                            offset=offset, length=length
-                                        )
+                                        table_data = table_frame.get_data(offset=offset, length=length)
 
                                         # Convert table data to results format
                                         if table_data:
@@ -938,9 +833,7 @@ class XGTOperations:
                                                         for col in job.schema:
                                                             if hasattr(col, "name"):
                                                                 columns.append(col.name)
-                                                            elif hasattr(
-                                                                col, "__iter__"
-                                                            ) and not isinstance(col, str):
+                                                            elif hasattr(col, "__iter__") and not isinstance(col, str):
                                                                 # Schema might be [column_name, type] tuples
                                                                 columns.append(col[0])
                                                             else:
@@ -954,44 +847,22 @@ class XGTOperations:
                                                         for col in table_frame.schema:
                                                             if hasattr(col, "name"):
                                                                 columns.append(col.name)
-                                                            elif hasattr(
-                                                                col, "__iter__"
-                                                            ) and not isinstance(col, str):
+                                                            elif hasattr(col, "__iter__") and not isinstance(col, str):
                                                                 # Schema might be [column_name, type] tuples
                                                                 columns.append(col[0])
                                                             else:
                                                                 columns.append(str(col))
                                                     else:
-                                                        columns = (
-                                                            [
-                                                                f"col_{i}"
-                                                                for i in range(len(table_data[0]))
-                                                            ]
-                                                            if table_data
-                                                            else []
-                                                        )
+                                                        columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
                                                 else:
-                                                    columns = (
-                                                        [
-                                                            f"col_{i}"
-                                                            for i in range(len(table_data[0]))
-                                                        ]
-                                                        if table_data
-                                                        else []
-                                                    )
+                                                    columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
                                             except Exception:
-                                                columns = (
-                                                    [f"col_{i}" for i in range(len(table_data[0]))]
-                                                    if table_data
-                                                    else []
-                                                )
+                                                columns = [f"col_{i}" for i in range(len(table_data[0]))] if table_data else []
 
                                             # Convert rows to the expected format
                                             rows = []
                                             for row in table_data:
-                                                if hasattr(row, "__iter__") and not isinstance(
-                                                    row, str
-                                                ):
+                                                if hasattr(row, "__iter__") and not isinstance(row, str):
                                                     # Row is already a list/tuple
                                                     rows.append(list(row))
                                                 else:
@@ -1085,17 +956,11 @@ class XGTOperations:
                         if xgt_job_id == job_id:
                             # Extract job status information
                             job_status = getattr(job, "status", "unknown")
-                            progress = getattr(
-                                job, "progress", 1.0 if job_status == "completed" else 0.0
-                            )
+                            progress = getattr(job, "progress", 1.0 if job_status == "completed" else 0.0)
 
                             # Get timing information
-                            submitted_at = getattr(
-                                job, "submitted_at", getattr(job, "create_time", time.time())
-                            )
-                            start_time = getattr(
-                                job, "start_time", getattr(job, "started_at", submitted_at)
-                            )
+                            submitted_at = getattr(job, "submitted_at", getattr(job, "create_time", time.time()))
+                            start_time = getattr(job, "start_time", getattr(job, "started_at", submitted_at))
                             end_time = getattr(job, "end_time", getattr(job, "finished_at", None))
 
                             # Convert to timestamp if needed
@@ -1203,17 +1068,11 @@ class XGTOperations:
                         )
                         if not query:
                             # Try to extract from job description or command
-                            query = getattr(
-                                job, "description", getattr(job, "command", "Query not available")
-                            )
+                            query = getattr(job, "description", getattr(job, "command", "Query not available"))
 
                         # Get timing information
-                        submitted_at = getattr(
-                            job, "submitted_at", getattr(job, "create_time", time.time())
-                        )
-                        start_time = getattr(
-                            job, "start_time", getattr(job, "started_at", submitted_at)
-                        )
+                        submitted_at = getattr(job, "submitted_at", getattr(job, "create_time", time.time()))
+                        start_time = getattr(job, "start_time", getattr(job, "started_at", submitted_at))
                         end_time = getattr(job, "end_time", getattr(job, "finished_at", None))
 
                         # Convert to timestamp if needed

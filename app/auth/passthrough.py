@@ -44,6 +44,7 @@ def _get_jwt_module():
             pyjwt = None
     return pyjwt
 
+
 # XGT imports
 try:
     import xgt
@@ -112,9 +113,7 @@ class PassthroughAuthService:
         # Cache for connection validation (username -> validation result)
         self._connection_cache = TTLCache(maxsize=100, ttl=300)  # 5 min TTL
 
-    def authenticate_xgt_user(
-        self, auth_request: Union[XGTBasicAuthRequest, XGTPKIAuthRequest, XGTProxyPKIAuthRequest]
-    ) -> dict[str, Any]:
+    def authenticate_xgt_user(self, auth_request: Union[XGTBasicAuthRequest, XGTPKIAuthRequest, XGTProxyPKIAuthRequest]) -> dict[str, Any]:
         """
         Authenticate user by testing XGT connection with their credentials.
 
@@ -180,9 +179,7 @@ class PassthroughAuthService:
             jwt_token = self._generate_jwt_token(username, credentials, user_info)
             logger.debug("JWT token generated successfully")
 
-            logger.info(
-                f"XGT user {username} authenticated successfully with {auth_request.auth_type}"
-            )
+            logger.info(f"XGT user {username} authenticated successfully with {auth_request.auth_type}")
 
             return {
                 "success": True,
@@ -198,9 +195,7 @@ class PassthroughAuthService:
             }
 
         except Exception as e:
-            username = getattr(
-                auth_request, "username", getattr(auth_request, "user_id", "unknown")
-            )
+            username = getattr(auth_request, "username", getattr(auth_request, "user_id", "unknown"))
             logger.error(f"XGT authentication failed for user {username}: {e}")
             if "authentication" in str(e).lower() or "unauthorized" in str(e).lower():
                 raise XGTOperationError(f"Invalid XGT credentials for user {username}")
@@ -283,9 +278,7 @@ class PassthroughAuthService:
             raise XGTOperationError("Proxy PKI signature validation failed")
 
         # Create ProxyPKIAuth object
-        auth_obj = xgt.ProxyPKIAuth(
-            user_id=auth_request.user_id, proxy_host=auth_request.proxy_host
-        )
+        auth_obj = xgt.ProxyPKIAuth(user_id=auth_request.user_id, proxy_host=auth_request.proxy_host)
 
         auth_data = {
             "user_id": auth_request.user_id,
@@ -328,10 +321,7 @@ class PassthroughAuthService:
 
             # Look for userId in certificate subject
             for attribute in certificate.subject:
-                if (
-                    attribute.oid._name == "userId"
-                    or attribute.oid.dotted_string == "0.9.2342.19200300.100.1.1"
-                ):
+                if attribute.oid._name == "userId" or attribute.oid.dotted_string == "0.9.2342.19200300.100.1.1":
                     return attribute.value
 
             # Fallback to common name if userId not found
@@ -484,9 +474,7 @@ class PassthroughAuthService:
                 except Exception:
                     pass  # Ignore close errors
 
-    def _generate_jwt_token(
-        self, username: str, credentials: XGTCredentials, user_info: dict[str, Any]
-    ) -> str:
+    def _generate_jwt_token(self, username: str, credentials: XGTCredentials, user_info: dict[str, Any]) -> str:
         """Generate JWT token with encrypted XGT credentials."""
         # Get JWT module dynamically
         jwt_module = _get_jwt_module()
@@ -510,9 +498,7 @@ class PassthroughAuthService:
             logger.debug(f"Generating JWT token for user: {username}")
 
             # Use PyJWT encode method
-            token = jwt_module.encode(
-                payload, self.settings.JWT_SECRET_KEY, algorithm=self.settings.JWT_ALGORITHM
-            )
+            token = jwt_module.encode(payload, self.settings.JWT_SECRET_KEY, algorithm=self.settings.JWT_ALGORITHM)
 
             # Ensure token is a string (PyJWT 2.x returns string, older versions might return bytes)
             if isinstance(token, bytes):
@@ -549,9 +535,7 @@ class PassthroughAuthService:
                     password=credentials.auth_data.get("password"),
                 )
             else:
-                raise XGTConnectionError(
-                    f"Unsupported auth type for connection: {credentials.auth_type}"
-                )
+                raise XGTConnectionError(f"Unsupported auth type for connection: {credentials.auth_type}")
 
             conn_flags = {}
             if self.settings.XGT_USE_SSL:

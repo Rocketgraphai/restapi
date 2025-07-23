@@ -18,9 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Security schemes for authentication
 security = HTTPBearer(auto_error=False, scheme_name="BearerAuth")
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/xgt/token", scheme_name="OAuth2PasswordBearer", auto_error=False
-)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/xgt/token", scheme_name="OAuth2PasswordBearer", auto_error=False)
 
 
 async def get_current_xgt_user(

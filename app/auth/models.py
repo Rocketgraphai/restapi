@@ -17,15 +17,9 @@ class AuthenticatedUser(BaseModel):
     username: str = Field(..., description="Username")
     email: Optional[str] = Field(None, description="User email address")
     groups: set[str] = Field(default_factory=set, description="Groups user belongs to")
-    labels: set[str] = Field(
-        default_factory=set, description="Security labels resolved from groups"
-    )
-    auth_time: datetime = Field(
-        default_factory=datetime.utcnow, description="When user was authenticated"
-    )
-    labels_resolved_at: Optional[datetime] = Field(
-        None, description="When labels were last resolved"
-    )
+    labels: set[str] = Field(default_factory=set, description="Security labels resolved from groups")
+    auth_time: datetime = Field(default_factory=datetime.utcnow, description="When user was authenticated")
+    labels_resolved_at: Optional[datetime] = Field(None, description="When labels were last resolved")
 
     def has_label(self, label: str) -> bool:
         """Check if user has a specific security label."""
@@ -61,9 +55,7 @@ class SecurityLabel(BaseModel):
     label_id: str = Field(..., description="Unique label identifier")
     label_name: str = Field(..., description="Label name")
     description: Optional[str] = Field(None, description="Label description")
-    category: Optional[str] = Field(
-        None, description="Label category (role, clearance, department, etc.)"
-    )
+    category: Optional[str] = Field(None, description="Label category (role, clearance, department, etc.)")
 
 
 class AuthenticationRequest(BaseModel):
@@ -93,16 +85,10 @@ class TokenValidationResponse(BaseModel):
 class FrameACL(BaseModel):
     """Access Control List for a frame."""
 
-    create: set[str] = Field(
-        default_factory=set, description="Labels required for CREATE operations"
-    )
+    create: set[str] = Field(default_factory=set, description="Labels required for CREATE operations")
     read: set[str] = Field(default_factory=set, description="Labels required for READ operations")
-    update: set[str] = Field(
-        default_factory=set, description="Labels required for UPDATE operations"
-    )
-    delete: set[str] = Field(
-        default_factory=set, description="Labels required for DELETE operations"
-    )
+    update: set[str] = Field(default_factory=set, description="Labels required for UPDATE operations")
+    delete: set[str] = Field(default_factory=set, description="Labels required for DELETE operations")
 
     def can_create(self, user_labels: set[str]) -> bool:
         """Check if user can create based on labels."""

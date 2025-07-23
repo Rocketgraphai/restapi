@@ -17,9 +17,7 @@ class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = "RocketGraph Public API"
     APP_VERSION: str = "1.0.0"
-    ENVIRONMENT: str = Field(
-        default="development", description="Environment: development, staging, production"
-    )
+    ENVIRONMENT: str = Field(default="development", description="Environment: development, staging, production")
     DEBUG: bool = Field(default=False, description="Enable debug mode")
 
     # Server Settings
@@ -32,9 +30,7 @@ class Settings(BaseSettings):
         default="dev-secret-key-change-in-production",
         description="Secret key for cryptographic operations",
     )
-    API_KEY_SALT: str = Field(
-        default="dev-api-key-salt-change-in-production", description="Salt for API key hashing"
-    )
+    API_KEY_SALT: str = Field(default="dev-api-key-salt-change-in-production", description="Salt for API key hashing")
     ALLOWED_HOSTS: list[str] = Field(default=["*"], description="Allowed host headers")
     CORS_ORIGINS: list[str] = Field(default=[], description="Allowed CORS origins")
 
@@ -48,9 +44,7 @@ class Settings(BaseSettings):
     XGT_SERVER_CN: Optional[str] = Field(default=None, description="XGT server common name")
 
     # MongoDB Settings (for API metadata)
-    MONGODB_URI: str = Field(
-        default="mongodb://localhost:27017/rocketgraph_api", description="MongoDB connection URI"
-    )
+    MONGODB_URI: str = Field(default="mongodb://localhost:27017/rocketgraph_api", description="MongoDB connection URI")
     MONGODB_DATABASE: str = Field(default="rocketgraph_api", description="MongoDB database name")
 
     # Redis Settings (for caching and rate limiting)
@@ -59,9 +53,7 @@ class Settings(BaseSettings):
 
     # Rate Limiting Settings
     RATE_LIMITING_ENABLED: bool = Field(default=True, description="Enable rate limiting")
-    DEFAULT_RATE_LIMIT_PER_MINUTE: int = Field(
-        default=100, description="Default requests per minute"
-    )
+    DEFAULT_RATE_LIMIT_PER_MINUTE: int = Field(default=100, description="Default requests per minute")
     DEFAULT_RATE_LIMIT_PER_HOUR: int = Field(default=1000, description="Default requests per hour")
     DEFAULT_RATE_LIMIT_PER_DAY: int = Field(default=10000, description="Default requests per day")
 
@@ -71,25 +63,15 @@ class Settings(BaseSettings):
         description="JWT secret key for XGT credential encryption",
     )
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
-    JWT_EXPIRY_SECONDS: int = Field(
-        default=3600, description="JWT token expiry in seconds (1 hour)"
-    )
+    JWT_EXPIRY_SECONDS: int = Field(default=3600, description="JWT token expiry in seconds (1 hour)")
 
     # XGT Authentication Types Enabled
-    XGT_BASIC_AUTH_ENABLED: bool = Field(
-        default=True, description="Enable XGT Basic Auth (username/password)"
-    )
-    XGT_PKI_AUTH_ENABLED: bool = Field(
-        default=True, description="Enable XGT PKI certificate authentication"
-    )
-    XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(
-        default=False, description="Enable XGT Proxy PKI authentication"
-    )
+    XGT_BASIC_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT Basic Auth (username/password)")
+    XGT_PKI_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT PKI certificate authentication")
+    XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(default=False, description="Enable XGT Proxy PKI authentication")
 
     # LLM Settings
-    LLM_PROVIDERS: list[str] = Field(
-        default=["openai", "anthropic"], description="Available LLM providers"
-    )
+    LLM_PROVIDERS: list[str] = Field(default=["openai", "anthropic"], description="Available LLM providers")
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key")
     ANTHROPIC_API_KEY: Optional[str] = Field(default=None, description="Anthropic API key")
 
@@ -143,17 +125,11 @@ class Settings(BaseSettings):
         """Validate security settings in production."""
         if self.ENVIRONMENT == "production":
             if self.SECRET_KEY.startswith("dev-"):
-                raise ValueError(
-                    "Production environment requires a secure SECRET_KEY (not dev default)"
-                )
+                raise ValueError("Production environment requires a secure SECRET_KEY (not dev default)")
             if self.API_KEY_SALT.startswith("dev-"):
-                raise ValueError(
-                    "Production environment requires a secure API_KEY_SALT (not dev default)"
-                )
+                raise ValueError("Production environment requires a secure API_KEY_SALT (not dev default)")
             if self.JWT_SECRET_KEY.startswith("dev-"):
-                raise ValueError(
-                    "Production environment requires a secure JWT_SECRET_KEY (not dev default)"
-                )
+                raise ValueError("Production environment requires a secure JWT_SECRET_KEY (not dev default)")
         return self
 
     @property

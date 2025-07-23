@@ -26,7 +26,7 @@ class TestAPIEndpointsIntegration:
         mock_credentials.auth_type = XGTAuthType.BASIC
         mock_credentials.username = "test_user"
         mock_credentials.password = "test_password"
-        
+
         mock_user = AuthenticatedXGTUser(
             username="test_user",
             authenticated_at=time.time(),

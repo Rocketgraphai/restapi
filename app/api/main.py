@@ -47,10 +47,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
-        description=(
-            "Secure REST API for graph database operations "
-            "using XGT with pass-through authentication"
-        ),
+        description=("Secure REST API for graph database operations using XGT with pass-through authentication"),
         docs_url="/docs" if not settings.is_production else None,  # Disable docs in prod
         redoc_url="/redoc" if not settings.is_production else None,
         lifespan=lifespan,
@@ -72,9 +69,7 @@ def create_app() -> FastAPI:
             response.headers["X-API-Version"] = settings.APP_VERSION
 
             if settings.is_production:
-                response.headers["Strict-Transport-Security"] = (
-                    "max-age=31536000; includeSubDomains"
-                )
+                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
             return response
 
@@ -108,9 +103,7 @@ def create_app() -> FastAPI:
         """Handle custom API exceptions."""
         return JSONResponse(
             status_code=400,
-            content={
-                "error": {"code": exc.error_code, "message": exc.message, "details": exc.details}
-            },
+            content={"error": {"code": exc.error_code, "message": exc.message, "details": exc.details}},
         )
 
     @app.exception_handler(HTTPException)
@@ -118,9 +111,7 @@ def create_app() -> FastAPI:
         """Handle HTTP exceptions."""
         return JSONResponse(
             status_code=exc.status_code,
-            content={
-                "error": {"code": f"HTTP_{exc.status_code}", "message": exc.detail, "details": {}}
-            },
+            content={"error": {"code": f"HTTP_{exc.status_code}", "message": exc.detail, "details": {}}},
         )
 
     @app.exception_handler(Exception)

@@ -50,9 +50,7 @@ class AuthenticationService:
             auth_result = self._authenticate_with_xgt(xgt_ops, username, password)
 
             if not auth_result["success"]:
-                raise XGTOperationError(
-                    f"Authentication failed: {auth_result.get('error', 'Invalid credentials')}"
-                )
+                raise XGTOperationError(f"Authentication failed: {auth_result.get('error', 'Invalid credentials')}")
 
             user_id = auth_result["user_id"]
 
@@ -76,9 +74,7 @@ class AuthenticationService:
             # Step 5: Generate JWT token
             access_token = self._generate_jwt_token(authenticated_user)
 
-            logger.info(
-                f"User {username} authenticated successfully with {len(user_labels)} labels"
-            )
+            logger.info(f"User {username} authenticated successfully with {len(user_labels)} labels")
 
             return AuthenticationResponse(
                 access_token=access_token,
@@ -103,9 +99,7 @@ class AuthenticationService:
         """
         try:
             # Decode JWT token
-            payload = pyjwt.decode(
-                token, self.settings.JWT_SECRET_KEY, algorithms=[self.settings.JWT_ALGORITHM]
-            )
+            payload = pyjwt.decode(token, self.settings.JWT_SECRET_KEY, algorithms=[self.settings.JWT_ALGORITHM])
 
             user_id = payload.get("sub")
             if not user_id:
@@ -151,9 +145,7 @@ class AuthenticationService:
             RETURN u.user_id as user_id, u.email as email, u.active as active
             """
 
-            result = xgt_ops._execute_query_sync(
-                query, {"username": username, "password": password}
-            )
+            result = xgt_ops._execute_query_sync(query, {"username": username, "password": password})
 
             if result and len(result) > 0:
                 user_data = result[0]
@@ -276,20 +268,14 @@ class AuthenticationService:
             "labels": list(user.labels),
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(seconds=self.settings.JWT_EXPIRY_SECONDS)).timestamp()),
-            "labels_resolved_at": int(user.labels_resolved_at.timestamp())
-            if user.labels_resolved_at
-            else int(now.timestamp()),
+            "labels_resolved_at": int(user.labels_resolved_at.timestamp()) if user.labels_resolved_at else int(now.timestamp()),
         }
 
-        token = pyjwt.encode(
-            payload, self.settings.JWT_SECRET_KEY, algorithm=self.settings.JWT_ALGORITHM
-        )
+        token = pyjwt.encode(payload, self.settings.JWT_SECRET_KEY, algorithm=self.settings.JWT_ALGORITHM)
 
         return token
 
-    def check_frame_permission(
-        self, user: AuthenticatedUser, frame_acl: FrameACL, operation: str
-    ) -> bool:
+    def check_frame_permission(self, user: AuthenticatedUser, frame_acl: FrameACL, operation: str) -> bool:
         """Check if user has permission for a frame operation."""
         return frame_acl.check_permission(operation, user.labels)
 
