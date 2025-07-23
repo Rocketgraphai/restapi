@@ -14,10 +14,10 @@ from fastapi.testclient import TestClient
 import pytest
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Mock the problematic imports before importing app modules
-with patch.dict('sys.modules', {'xgt_connector': Mock(), 'xgt': Mock()}):
+with patch.dict("sys.modules", {"xgt_connector": Mock(), "xgt": Mock()}):
     from app.api.main import app
     from app.config.app_config import Settings
 
@@ -42,14 +42,14 @@ def mock_settings():
         XGT_USERNAME="test",
         XGT_PASSWORD="test",
         MONGODB_URI="mongodb://localhost:27017/test",
-        REDIS_URL="redis://localhost:6379"
+        REDIS_URL="redis://localhost:6379",
     )
 
 
 class TestHealthEndpoint:
     """Test health check endpoint."""
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_all_services_healthy(self, mock_get_settings, client):
         """Test health check when all services are healthy."""
         mock_settings = Mock()
@@ -75,7 +75,7 @@ class TestHealthEndpoint:
         mock_xgt_connection.__protobuf_version__ = (1, 1, 0)  # Client protocol
         mock_xgt.connection = mock_xgt_connection
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt, "xgt.connection": mock_xgt_connection}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -94,7 +94,7 @@ class TestHealthEndpoint:
         assert data["services"]["mongodb"] == "healthy"
         assert data["services"]["redis"] == "healthy"
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_xgt_unavailable(self, mock_get_settings, client):
         """Test health check when XGT is not available (development scenario)."""
         mock_settings = Mock()
@@ -107,7 +107,7 @@ class TestHealthEndpoint:
         mock_xgt.Connection.side_effect = Exception("Connection refused")
         mock_xgt.BasicAuth.return_value = Mock()
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -116,7 +116,7 @@ class TestHealthEndpoint:
         assert data["status"] == "degraded"
         assert "Connection refused" in data["services"]["xgt"]
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_xgt_connection_error(self, mock_get_settings, client):
         """Test health check when XGT connection fails."""
         mock_settings = Mock()
@@ -133,7 +133,7 @@ class TestHealthEndpoint:
         mock_xgt.Connection.side_effect = Exception("Connection refused")
         mock_xgt.BasicAuth.return_value = Mock()
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -142,7 +142,7 @@ class TestHealthEndpoint:
         assert data["status"] == "degraded"
         assert data["services"]["xgt"] == "unhealthy: Connection refused"
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_critical_failure(self, mock_get_settings, client):
         """Test health check when critical services fail."""
         mock_settings = Mock()
@@ -159,7 +159,7 @@ class TestHealthEndpoint:
         mock_xgt.Connection.side_effect = Exception("Critical XGT failure")
         mock_xgt.BasicAuth.return_value = Mock()
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -169,7 +169,7 @@ class TestHealthEndpoint:
         assert data["status"] == "degraded"
         assert "Critical XGT failure" in data["services"]["xgt"]
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_version_mismatch(self, mock_get_settings, client):
         """Test health check when XGT SDK and server versions are incompatible."""
         mock_settings = Mock()
@@ -195,7 +195,7 @@ class TestHealthEndpoint:
         mock_xgt_connection.__protobuf_version__ = (1, 1, 0)  # Newer client protocol
         mock_xgt.connection = mock_xgt_connection
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt, "xgt.connection": mock_xgt_connection}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -205,7 +205,7 @@ class TestHealthEndpoint:
         assert "degraded: protocol incompatible" in data["services"]["xgt"]
         assert "server:(1, 0, 0) < client:(1, 1, 0)" in data["services"]["xgt"]
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_version_compatible_patch(self, mock_get_settings, client):
         """Test health check when patch versions differ but major.minor match."""
         mock_settings = Mock()
@@ -231,16 +231,19 @@ class TestHealthEndpoint:
         mock_xgt_connection.__protobuf_version__ = (1, 1, 0)  # Older client protocol
         mock_xgt.connection = mock_xgt_connection
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt, "xgt.connection": mock_xgt_connection}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
         data = response.json()
 
         assert data["status"] == "healthy"
-        assert "healthy (server:v2.3.5 protocol:(1, 2, 0), sdk:v2.3.0 client_protocol:(1, 1, 0))" in data["services"]["xgt"]
+        assert (
+            "healthy (server:v2.3.5 protocol:(1, 2, 0), sdk:v2.3.0 client_protocol:(1, 1, 0))"
+            in data["services"]["xgt"]
+        )
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_malformed_version(self, mock_get_settings, client):
         """Test health check when version strings are malformed."""
         mock_settings = Mock()
@@ -266,7 +269,7 @@ class TestHealthEndpoint:
         mock_xgt_connection.__protobuf_version__ = (1, 1, 0)
         mock_xgt.connection = mock_xgt_connection
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt, "xgt.connection": mock_xgt_connection}):
             response = client.get("/api/v1/public/health")
 
         assert response.status_code == 200
@@ -366,7 +369,7 @@ class TestLivenessEndpoint:
 class TestVersionEndpoint:
     """Test version information endpoint."""
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_version_info_success(self, mock_get_settings, client):
         """Test successful version info retrieval with comprehensive version data."""
         mock_settings = Mock()
@@ -394,7 +397,7 @@ class TestVersionEndpoint:
         mock_xgt_connection.__protobuf_version__ = (1, 1, 0)
         mock_xgt.connection = mock_xgt_connection
 
-        with patch.dict('sys.modules', {'xgt': mock_xgt, 'xgt.connection': mock_xgt_connection}):
+        with patch.dict("sys.modules", {"xgt": mock_xgt, "xgt.connection": mock_xgt_connection}):
             response = client.get("/api/v1/public/version")
 
         assert response.status_code == 200
@@ -441,7 +444,13 @@ class TestVersionEndpoint:
             assert field in data["api"]
 
         # Check XGT section (basic structure)
-        xgt_fields = ["server_version", "server_protocol", "sdk_version", "client_protocol", "connection_status"]
+        xgt_fields = [
+            "server_version",
+            "server_protocol",
+            "sdk_version",
+            "client_protocol",
+            "connection_status",
+        ]
         for field in xgt_fields:
             assert field in data["xgt"]
 
@@ -479,7 +488,7 @@ class TestHealthEndpointIntegration:
             "/api/v1/public/health",
             "/api/v1/public/ready",
             "/api/v1/public/live",
-            "/api/v1/public/version"
+            "/api/v1/public/version",
         ]
 
         for endpoint in endpoints:
@@ -495,7 +504,7 @@ class TestHealthEndpointIntegration:
         assert response.status_code == 200
         assert (end_time - start_time) < 5.0  # Should respond within 5 seconds
 
-    @patch('app.api.v1.public.health.get_settings')
+    @patch("app.api.v1.public.health.get_settings")
     def test_health_check_error_handling(self, mock_get_settings, client):
         """Test health check handles various error types gracefully."""
         mock_settings = Mock()
@@ -511,7 +520,7 @@ class TestHealthEndpointIntegration:
         error_scenarios = [
             ConnectionError("Cannot connect to XGT"),
             TimeoutError("XGT connection timeout"),
-            Exception("Generic XGT error")
+            Exception("Generic XGT error"),
         ]
 
         for error in error_scenarios:
@@ -519,7 +528,7 @@ class TestHealthEndpointIntegration:
             mock_xgt.Connection.side_effect = error
             mock_xgt.BasicAuth.return_value = Mock()
 
-            with patch.dict('sys.modules', {'xgt': mock_xgt}):
+            with patch.dict("sys.modules", {"xgt": mock_xgt}):
                 response = client.get("/api/v1/public/health")
 
             assert response.status_code == 200

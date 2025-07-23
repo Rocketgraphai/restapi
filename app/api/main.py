@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 
 from ..config.app_config import get_settings
 from ..utils.exceptions import BaseAPIException
-from .v1.public import datasets, frames, health, query
 from .v1.auth import passthrough_auth
+from .v1.public import datasets, frames, health, query
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,18 +43,22 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     # Security schemes are now auto-detected from FastAPI dependencies
-    
+
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
-        description="Secure REST API for graph database operations using XGT with pass-through authentication",
+        description=(
+            "Secure REST API for graph database operations "
+            "using XGT with pass-through authentication"
+        ),
         docs_url="/docs" if not settings.is_production else None,  # Disable docs in prod
         redoc_url="/redoc" if not settings.is_production else None,
-        lifespan=lifespan
+        lifespan=lifespan,
     )
 
     # Add security middleware
     if settings.SECURITY_HEADERS_ENABLED:
+
         @app.middleware("http")
         async def add_security_headers(request: Request, call_next):
             """Add security headers to responses."""
@@ -68,16 +72,15 @@ def create_app() -> FastAPI:
             response.headers["X-API-Version"] = settings.APP_VERSION
 
             if settings.is_production:
-                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+                response.headers["Strict-Transport-Security"] = (
+                    "max-age=31536000; includeSubDomains"
+                )
 
             return response
 
     # Add trusted host middleware
     if settings.ALLOWED_HOSTS != ["*"]:
-        app.add_middleware(
-            TrustedHostMiddleware,
-            allowed_hosts=settings.ALLOWED_HOSTS
-        )
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
 
     # Add CORS middleware
     if settings.CORS_ORIGINS:
@@ -106,12 +109,8 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=400,
             content={
-                "error": {
-                    "code": exc.error_code,
-                    "message": exc.message,
-                    "details": exc.details
-                }
-            }
+                "error": {"code": exc.error_code, "message": exc.message, "details": exc.details}
+            },
         )
 
     @app.exception_handler(HTTPException)
@@ -120,12 +119,8 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=exc.status_code,
             content={
-                "error": {
-                    "code": f"HTTP_{exc.status_code}",
-                    "message": exc.detail,
-                    "details": {}
-                }
-            }
+                "error": {"code": f"HTTP_{exc.status_code}", "message": exc.detail, "details": {}}
+            },
         )
 
     @app.exception_handler(Exception)
@@ -141,9 +136,9 @@ def create_app() -> FastAPI:
                     "error": {
                         "code": "INTERNAL_SERVER_ERROR",
                         "message": str(exc),
-                        "details": {"type": type(exc).__name__}
+                        "details": {"type": type(exc).__name__},
                     }
-                }
+                },
             )
         else:
             # In production, hide internal details
@@ -153,44 +148,24 @@ def create_app() -> FastAPI:
                     "error": {
                         "code": "INTERNAL_SERVER_ERROR",
                         "message": "An internal server error occurred",
-                        "details": {}
+                        "details": {},
                     }
-                }
+                },
             )
 
     # Include routers
-    
+
     # Authentication endpoints (no prefix, public access)
-    app.include_router(
-        passthrough_auth.router,
-        prefix="/api/v1",
-        tags=["authentication"]
-    )
-    
+    app.include_router(passthrough_auth.router, prefix="/api/v1", tags=["authentication"])
+
     # Public endpoints (will require authentication after migration)
-    app.include_router(
-        health.router,
-        prefix="/api/v1/public",
-        tags=["health"]
-    )
+    app.include_router(health.router, prefix="/api/v1/public", tags=["health"])
 
-    app.include_router(
-        datasets.router,
-        prefix="/api/v1/public",
-        tags=["datasets"]
-    )
+    app.include_router(datasets.router, prefix="/api/v1/public", tags=["datasets"])
 
-    app.include_router(
-        frames.router,
-        prefix="/api/v1/public",
-        tags=["frames"]
-    )
+    app.include_router(frames.router, prefix="/api/v1/public", tags=["frames"])
 
-    app.include_router(
-        query.router,
-        prefix="/api/v1/public",
-        tags=["query"]
-    )
+    app.include_router(query.router, prefix="/api/v1/public", tags=["query"])
 
     return app
 

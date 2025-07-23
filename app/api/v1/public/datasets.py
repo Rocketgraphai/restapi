@@ -5,16 +5,16 @@ Provides read-only access to discover available datasets and their metadata.
 """
 
 import logging
-from typing import Any, Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 
+from ....auth.passthrough_middleware import require_xgt_authentication
+from ....auth.passthrough_models import AuthenticatedXGTUser
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
 from ....utils.xgt_user_operations import create_user_xgt_operations
-from ....auth.passthrough_middleware import require_xgt_authentication
-from ....auth.passthrough_models import AuthenticatedXGTUser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class DatasetFrameInfo(BaseModel):
     """Information about a frame (vertex or edge) in a dataset."""
+
     name: str = Field(..., description="Frame name")
     schema_definition: list[list[Any]] = Field(..., description="Frame schema definition")
     num_rows: int = Field(..., description="Number of rows in the frame")
@@ -31,11 +32,13 @@ class DatasetFrameInfo(BaseModel):
 
 class VertexFrameInfo(DatasetFrameInfo):
     """Information about a vertex frame."""
+
     key: str = Field(..., description="Primary key column name")
 
 
 class EdgeFrameInfo(DatasetFrameInfo):
     """Information about an edge frame."""
+
     source_frame: str = Field(..., description="Source vertex frame name")
     source_key: str = Field(..., description="Source key column name")
     target_frame: str = Field(..., description="Target vertex frame name")
@@ -44,6 +47,7 @@ class EdgeFrameInfo(DatasetFrameInfo):
 
 class DatasetInfo(BaseModel):
     """Information about a dataset (namespace)."""
+
     name: str = Field(..., description="Dataset name")
     vertices: list[VertexFrameInfo] = Field(..., description="Vertex frames in the dataset")
     edges: list[EdgeFrameInfo] = Field(..., description="Edge frames in the dataset")
@@ -59,7 +63,7 @@ class DatasetInfo(BaseModel):
                         "num_rows": 1000,
                         "create_rows": True,
                         "delete_frame": False,
-                        "key": "id"
+                        "key": "id",
                     }
                 ],
                 "edges": [
@@ -72,9 +76,9 @@ class DatasetInfo(BaseModel):
                         "source_frame": "users",
                         "source_key": "id",
                         "target_frame": "users",
-                        "target_key": "id"
+                        "target_key": "id",
                     }
-                ]
+                ],
             }
         }
     )
@@ -82,12 +86,14 @@ class DatasetInfo(BaseModel):
 
 class DatasetsResponse(BaseModel):
     """Response for datasets listing."""
+
     datasets: list[DatasetInfo] = Field(..., description="Available datasets")
     total_count: int = Field(..., description="Total number of datasets")
 
 
 class SchemaProperty(BaseModel):
     """Schema property information."""
+
     name: str = Field(..., description="Property name")
     type: str = Field(..., description="Property type")
     leaf_type: str = Field(..., description="Leaf type for complex types")
@@ -96,6 +102,7 @@ class SchemaProperty(BaseModel):
 
 class NodeSchema(BaseModel):
     """Node frame schema information."""
+
     name: str = Field(..., description="Node frame name")
     properties: list[SchemaProperty] = Field(..., description="Node properties")
     key: str = Field(..., description="Primary key property")
@@ -103,6 +110,7 @@ class NodeSchema(BaseModel):
 
 class EdgeSchema(BaseModel):
     """Edge frame schema information."""
+
     name: str = Field(..., description="Edge frame name")
     properties: list[SchemaProperty] = Field(..., description="Edge properties")
     source: str = Field(..., description="Source node frame name")
@@ -113,6 +121,7 @@ class EdgeSchema(BaseModel):
 
 class SchemaResponse(BaseModel):
     """Schema information response."""
+
     graph: str = Field(..., description="Dataset/graph name")
     nodes: list[NodeSchema] = Field(..., description="Node schemas")
     edges: list[EdgeSchema] = Field(..., description="Edge schemas")
@@ -127,9 +136,9 @@ class SchemaResponse(BaseModel):
                         "properties": [
                             {"name": "id", "type": "TEXT", "leaf_type": "TEXT", "depth": 1},
                             {"name": "name", "type": "TEXT", "leaf_type": "TEXT", "depth": 1},
-                            {"name": "age", "type": "INTEGER", "leaf_type": "INTEGER", "depth": 1}
+                            {"name": "age", "type": "INTEGER", "leaf_type": "INTEGER", "depth": 1},
                         ],
-                        "key": "id"
+                        "key": "id",
                     }
                 ],
                 "edges": [
@@ -137,14 +146,19 @@ class SchemaResponse(BaseModel):
                         "name": "PURCHASED",
                         "properties": [
                             {"name": "amount", "type": "FLOAT", "leaf_type": "FLOAT", "depth": 1},
-                            {"name": "date", "type": "DATETIME", "leaf_type": "DATETIME", "depth": 1}
+                            {
+                                "name": "date",
+                                "type": "DATETIME",
+                                "leaf_type": "DATETIME",
+                                "depth": 1,
+                            },
                         ],
                         "source": "Customer",
                         "target": "Product",
                         "source_key": "id",
-                        "target_key": "id"
+                        "target_key": "id",
                     }
-                ]
+                ],
             }
         }
     )
@@ -153,10 +167,7 @@ class SchemaResponse(BaseModel):
 @router.get("/datasets", response_model=DatasetsResponse)
 async def list_datasets(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
-    include_empty: bool = Query(
-        default=False,
-        description="Include datasets with no frames"
-    )
+    include_empty: bool = Query(default=False, description="Include datasets with no frames"),
 ):
     """
     List all datasets available to the organization.
@@ -186,48 +197,49 @@ async def list_datasets(
         datasets = []
         for dataset_raw in datasets_raw:
             # Skip empty datasets if not requested
-            if not include_empty and not dataset_raw.get('vertices') and not dataset_raw.get('edges'):
+            if (
+                not include_empty
+                and not dataset_raw.get("vertices")
+                and not dataset_raw.get("edges")
+            ):
                 continue
 
             # Convert vertex frames
             vertices = []
-            for vertex_raw in dataset_raw.get('vertices', []):
-                vertices.append(VertexFrameInfo(
-                    name=vertex_raw['name'],
-                    schema_definition=vertex_raw['schema'],
-                    num_rows=vertex_raw['num_rows'],
-                    create_rows=vertex_raw['create_rows'],
-                    delete_frame=vertex_raw['delete_frame'],
-                    key=vertex_raw['key']
-                ))
+            for vertex_raw in dataset_raw.get("vertices", []):
+                vertices.append(
+                    VertexFrameInfo(
+                        name=vertex_raw["name"],
+                        schema_definition=vertex_raw["schema"],
+                        num_rows=vertex_raw["num_rows"],
+                        create_rows=vertex_raw["create_rows"],
+                        delete_frame=vertex_raw["delete_frame"],
+                        key=vertex_raw["key"],
+                    )
+                )
 
             # Convert edge frames
             edges = []
-            for edge_raw in dataset_raw.get('edges', []):
-                edges.append(EdgeFrameInfo(
-                    name=edge_raw['name'],
-                    schema_definition=edge_raw['schema'],
-                    num_rows=edge_raw['num_rows'],
-                    create_rows=edge_raw['create_rows'],
-                    delete_frame=edge_raw['delete_frame'],
-                    source_frame=edge_raw['source_frame'],
-                    source_key=edge_raw['source_key'],
-                    target_frame=edge_raw['target_frame'],
-                    target_key=edge_raw['target_key']
-                ))
+            for edge_raw in dataset_raw.get("edges", []):
+                edges.append(
+                    EdgeFrameInfo(
+                        name=edge_raw["name"],
+                        schema_definition=edge_raw["schema"],
+                        num_rows=edge_raw["num_rows"],
+                        create_rows=edge_raw["create_rows"],
+                        delete_frame=edge_raw["delete_frame"],
+                        source_frame=edge_raw["source_frame"],
+                        source_key=edge_raw["source_key"],
+                        target_frame=edge_raw["target_frame"],
+                        target_key=edge_raw["target_key"],
+                    )
+                )
 
-            datasets.append(DatasetInfo(
-                name=dataset_raw['name'],
-                vertices=vertices,
-                edges=edges
-            ))
+            datasets.append(DatasetInfo(name=dataset_raw["name"], vertices=vertices, edges=edges))
 
         logger.info(f"Found {len(datasets)} datasets")
 
-        return DatasetsResponse(
-            datasets=datasets,
-            total_count=len(datasets)
-        )
+        return DatasetsResponse(datasets=datasets, total_count=len(datasets))
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
@@ -236,8 +248,8 @@ async def list_datasets(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -246,8 +258,8 @@ async def list_datasets(
             detail={
                 "error": "XGT_OPERATION_ERROR",
                 "message": "Failed to retrieve datasets",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except Exception as e:
         logger.error(f"Unexpected error listing datasets: {e}")
@@ -256,8 +268,8 @@ async def list_datasets(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
@@ -266,13 +278,11 @@ async def get_dataset_schema(
     dataset_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     fully_qualified: bool = Query(
-        default=False,
-        description="Include namespace information in frame names"
+        default=False, description="Include namespace information in frame names"
     ),
     add_missing_edge_nodes: bool = Query(
-        default=False,
-        description="Include missing edge nodes in the schema"
-    )
+        default=False, description="Include missing edge nodes in the schema"
+    ),
 ):
     """
     Get schema information for a specific dataset.
@@ -301,57 +311,53 @@ async def get_dataset_schema(
         schema_raw = user_xgt_ops.get_schema(
             dataset_name=dataset_name,
             fully_qualified=fully_qualified,
-            add_missing_edge_nodes=add_missing_edge_nodes
+            add_missing_edge_nodes=add_missing_edge_nodes,
         )
 
         # Convert nodes to response format
         nodes = []
-        for node_raw in schema_raw.get('nodes', []):
+        for node_raw in schema_raw.get("nodes", []):
             properties = [
                 SchemaProperty(
-                    name=prop['name'],
-                    type=prop['type'],
-                    leaf_type=prop['leaf_type'],
-                    depth=prop['depth']
+                    name=prop["name"],
+                    type=prop["type"],
+                    leaf_type=prop["leaf_type"],
+                    depth=prop["depth"],
                 )
-                for prop in node_raw['properties']
+                for prop in node_raw["properties"]
             ]
 
-            nodes.append(NodeSchema(
-                name=node_raw['name'],
-                properties=properties,
-                key=node_raw['key']
-            ))
+            nodes.append(
+                NodeSchema(name=node_raw["name"], properties=properties, key=node_raw["key"])
+            )
 
         # Convert edges to response format
         edges = []
-        for edge_raw in schema_raw.get('edges', []):
+        for edge_raw in schema_raw.get("edges", []):
             properties = [
                 SchemaProperty(
-                    name=prop['name'],
-                    type=prop['type'],
-                    leaf_type=prop['leaf_type'],
-                    depth=prop['depth']
+                    name=prop["name"],
+                    type=prop["type"],
+                    leaf_type=prop["leaf_type"],
+                    depth=prop["depth"],
                 )
-                for prop in edge_raw['properties']
+                for prop in edge_raw["properties"]
             ]
 
-            edges.append(EdgeSchema(
-                name=edge_raw['name'],
-                properties=properties,
-                source=edge_raw['source'],
-                target=edge_raw['target'],
-                source_key=edge_raw['source_key'],
-                target_key=edge_raw['target_key']
-            ))
+            edges.append(
+                EdgeSchema(
+                    name=edge_raw["name"],
+                    properties=properties,
+                    source=edge_raw["source"],
+                    target=edge_raw["target"],
+                    source_key=edge_raw["source_key"],
+                    target_key=edge_raw["target_key"],
+                )
+            )
 
         logger.info(f"Retrieved schema for {dataset_name}: {len(nodes)} nodes, {len(edges)} edges")
 
-        return SchemaResponse(
-            graph=schema_raw.get('graph', dataset_name),
-            nodes=nodes,
-            edges=edges
-        )
+        return SchemaResponse(graph=schema_raw.get("graph", dataset_name), nodes=nodes, edges=edges)
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
@@ -360,8 +366,8 @@ async def get_dataset_schema(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -370,8 +376,8 @@ async def get_dataset_schema(
             detail={
                 "error": "XGT_OPERATION_ERROR",
                 "message": f"Failed to retrieve schema for dataset '{dataset_name}'",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except Exception as e:
         logger.error(f"Unexpected error getting schema for {dataset_name}: {e}")
@@ -380,15 +386,15 @@ async def get_dataset_schema(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
 @router.get("/datasets/{dataset_name}", response_model=DatasetInfo)
 async def get_dataset_info(
     dataset_name: str,
-    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
 ):
     """
     Get detailed information about a specific dataset.
@@ -420,43 +426,43 @@ async def get_dataset_info(
                 detail={
                     "error": "DATASET_NOT_FOUND",
                     "message": f"Dataset '{dataset_name}' not found",
-                    "details": f"No dataset named '{dataset_name}' exists"
-                }
+                    "details": f"No dataset named '{dataset_name}' exists",
+                },
             )
 
         dataset_raw = datasets_raw[0]  # Should only be one dataset
 
         # Convert to response format (same logic as list_datasets)
         vertices = []
-        for vertex_raw in dataset_raw.get('vertices', []):
-            vertices.append(VertexFrameInfo(
-                name=vertex_raw['name'],
-                schema_definition=vertex_raw['schema'],
-                num_rows=vertex_raw['num_rows'],
-                create_rows=vertex_raw['create_rows'],
-                delete_frame=vertex_raw['delete_frame'],
-                key=vertex_raw['key']
-            ))
+        for vertex_raw in dataset_raw.get("vertices", []):
+            vertices.append(
+                VertexFrameInfo(
+                    name=vertex_raw["name"],
+                    schema_definition=vertex_raw["schema"],
+                    num_rows=vertex_raw["num_rows"],
+                    create_rows=vertex_raw["create_rows"],
+                    delete_frame=vertex_raw["delete_frame"],
+                    key=vertex_raw["key"],
+                )
+            )
 
         edges = []
-        for edge_raw in dataset_raw.get('edges', []):
-            edges.append(EdgeFrameInfo(
-                name=edge_raw['name'],
-                schema_definition=edge_raw['schema'],
-                num_rows=edge_raw['num_rows'],
-                create_rows=edge_raw['create_rows'],
-                delete_frame=edge_raw['delete_frame'],
-                source_frame=edge_raw['source_frame'],
-                source_key=edge_raw['source_key'],
-                target_frame=edge_raw['target_frame'],
-                target_key=edge_raw['target_key']
-            ))
+        for edge_raw in dataset_raw.get("edges", []):
+            edges.append(
+                EdgeFrameInfo(
+                    name=edge_raw["name"],
+                    schema_definition=edge_raw["schema"],
+                    num_rows=edge_raw["num_rows"],
+                    create_rows=edge_raw["create_rows"],
+                    delete_frame=edge_raw["delete_frame"],
+                    source_frame=edge_raw["source_frame"],
+                    source_key=edge_raw["source_key"],
+                    target_frame=edge_raw["target_frame"],
+                    target_key=edge_raw["target_key"],
+                )
+            )
 
-        return DatasetInfo(
-            name=dataset_raw['name'],
-            vertices=vertices,
-            edges=edges
-        )
+        return DatasetInfo(name=dataset_raw["name"], vertices=vertices, edges=edges)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -468,8 +474,8 @@ async def get_dataset_info(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -478,8 +484,8 @@ async def get_dataset_info(
             detail={
                 "error": "XGT_OPERATION_ERROR",
                 "message": f"Failed to retrieve dataset '{dataset_name}'",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except Exception as e:
         logger.error(f"Unexpected error getting dataset {dataset_name}: {e}")
@@ -488,6 +494,6 @@ async def get_dataset_info(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )

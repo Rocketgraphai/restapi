@@ -4,7 +4,6 @@ Integration tests for XGT datasets endpoints.
 These tests require a running XGT server instance.
 """
 
-
 import pytest
 import requests
 
@@ -22,9 +21,11 @@ class TestXGTDatasetsIntegration:
         """Check if XGT server is available for testing."""
         try:
             import xgt
+
             # Try to connect to XGT directly to verify it's running
-            conn = xgt.Connection(host="localhost", port=4367,
-                                auth=xgt.BasicAuth(username="admin", password=""))
+            conn = xgt.Connection(
+                host="localhost", port=4367, auth=xgt.BasicAuth(username="admin", password="")
+            )
             conn.close()
             return True
         except Exception:
@@ -39,8 +40,9 @@ class TestXGTDatasetsIntegration:
         except Exception:
             return False
 
-    def test_datasets_endpoint_with_xgt(self, base_url: str, xgt_available: bool,
-                                       api_server_running: bool):
+    def test_datasets_endpoint_with_xgt(
+        self, base_url: str, xgt_available: bool, api_server_running: bool
+    ):
         """Test datasets endpoint with real XGT connection."""
         if not xgt_available:
             pytest.skip("XGT server not available")
@@ -80,7 +82,6 @@ class TestXGTDatasetsIntegration:
         # Should have connection details when XGT is available
         assert "connection_status" in xgt_info
         assert "server_version" in xgt_info
-
 
     def test_datasets_endpoint_error_handling(self, base_url: str):
         """Test datasets endpoint error handling."""

@@ -18,14 +18,15 @@ from typing import Optional
 
 class Colors:
     """ANSI color codes for terminal output"""
-    BLUE = '\033[0;34m'
-    GREEN = '\033[0;32m'
-    YELLOW = '\033[1;33m'
-    RED = '\033[0;31m'
-    PURPLE = '\033[0;35m'
-    CYAN = '\033[0;36m'
-    BOLD = '\033[1m'
-    NC = '\033[0m'  # No Color
+
+    BLUE = "\033[0;34m"
+    GREEN = "\033[0;32m"
+    YELLOW = "\033[1;33m"
+    RED = "\033[0;31m"
+    PURPLE = "\033[0;35m"
+    CYAN = "\033[0;36m"
+    BOLD = "\033[1m"
+    NC = "\033[0m"  # No Color
 
 
 class TestRunner:
@@ -42,8 +43,9 @@ class TestRunner:
     def log(self, message: str, color: str = Colors.NC):
         """Print colored log message"""
 
-    def run_command(self, cmd: list[str], name: str, cwd: Optional[Path] = None,
-                   env: Optional[dict] = None) -> tuple[bool, str]:
+    def run_command(
+        self, cmd: list[str], name: str, cwd: Optional[Path] = None, env: Optional[dict] = None
+    ) -> tuple[bool, str]:
         """Run a command and capture output"""
         self.log(f"🔄 Running: {name}", Colors.BLUE)
 
@@ -62,7 +64,7 @@ class TestRunner:
                 capture_output=True,
                 text=True,
                 env=full_env,
-                timeout=600  # 10 minute timeout
+                timeout=600,  # 10 minute timeout
             )
 
             if result.returncode == 0:
@@ -85,7 +87,7 @@ class TestRunner:
         """Check if required tools are available"""
         self.log("🔍 Checking requirements...", Colors.CYAN)
 
-        required_tools = ['python3', 'pip', 'docker']
+        required_tools = ["python3", "pip", "docker"]
         missing = []
 
         for tool in required_tools:
@@ -97,7 +99,7 @@ class TestRunner:
             return False
 
         # Check if we're in the right directory
-        if not (self.project_root / 'pyproject.toml').exists():
+        if not (self.project_root / "pyproject.toml").exists():
             self.log("❌ Not in project root directory", Colors.RED)
             return False
 
@@ -110,16 +112,15 @@ class TestRunner:
 
         # Install/upgrade pip
         success, _ = self.run_command(
-            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'],
-            "Upgrade pip"
+            [sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "Upgrade pip"
         )
         if not success:
             return False
 
         # Install dependencies
         success, _ = self.run_command(
-            [sys.executable, '-m', 'pip', 'install', '-r', 'requirements/development.txt'],
-            "Install dependencies"
+            [sys.executable, "-m", "pip", "install", "-r", "requirements/development.txt"],
+            "Install dependencies",
         )
 
         return success
@@ -130,14 +131,28 @@ class TestRunner:
 
         checks = [
             # Linting with ruff
-            ([sys.executable, '-m', 'ruff', 'check', '.', '--output-format=github'], "Ruff lint check"),
-            ([sys.executable, '-m', 'ruff', 'format', '--check', '.'], "Ruff format check"),
-
+            (
+                [sys.executable, "-m", "ruff", "check", ".", "--output-format=github"],
+                "Ruff lint check",
+            ),
+            ([sys.executable, "-m", "ruff", "format", "--check", "."], "Ruff format check"),
             # Type checking with mypy
-            ([sys.executable, '-m', 'mypy', 'app/', '--ignore-missing-imports'], "MyPy type check"),
-
+            ([sys.executable, "-m", "mypy", "app/", "--ignore-missing-imports"], "MyPy type check"),
             # Security check with bandit
-            ([sys.executable, '-m', 'bandit', '-r', 'app/', '-f', 'json', '-o', 'bandit-report.json'], "Bandit security scan"),
+            (
+                [
+                    sys.executable,
+                    "-m",
+                    "bandit",
+                    "-r",
+                    "app/",
+                    "-f",
+                    "json",
+                    "-o",
+                    "bandit-report.json",
+                ],
+                "Bandit security scan",
+            ),
         ]
 
         all_passed = True
@@ -156,9 +171,9 @@ class TestRunner:
         # Test multiple Python versions if available, otherwise just current
         python_versions = []
         if self.args.all_python_versions:
-            for version in ['3.9', '3.10', '3.11']:
-                if shutil.which(f'python{version}'):
-                    python_versions.append(f'python{version}')
+            for version in ["3.9", "3.10", "3.11"]:
+                if shutil.which(f"python{version}"):
+                    python_versions.append(f"python{version}")
 
         if not python_versions:
             python_versions = [sys.executable]
@@ -166,13 +181,16 @@ class TestRunner:
         all_passed = True
         for python_cmd in python_versions:
             cmd = [
-                python_cmd, '-m', 'pytest', 'tests/unit/',
-                '--cov=app',
-                '--cov-report=xml',
-                '--cov-report=html',
-                '--cov-fail-under=20',
-                '--junitxml=junit.xml',
-                '-v'
+                python_cmd,
+                "-m",
+                "pytest",
+                "tests/unit/",
+                "--cov=app",
+                "--cov-report=xml",
+                "--cov-report=html",
+                "--cov-fail-under=20",
+                "--junitxml=junit.xml",
+                "-v",
             ]
 
             success, _ = self.run_command(cmd, f"Unit tests ({python_cmd})")
@@ -187,9 +205,12 @@ class TestRunner:
         self.log("\n🔗 Mock Integration Tests", Colors.PURPLE)
 
         cmd = [
-            sys.executable, '-m', 'pytest', 'tests/integration/test_api_endpoints.py',
-            '--junitxml=mock-integration-junit.xml',
-            '-v'
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/integration/test_api_endpoints.py",
+            "--junitxml=mock-integration-junit.xml",
+            "-v",
         ]
 
         success, _ = self.run_command(cmd, "Mock integration tests")
@@ -203,12 +224,11 @@ class TestRunner:
 
         self.log("\n🚀 Setting up XGT server...", Colors.CYAN)
 
-        xgt_version = self.args.xgt_version or 'latest'
+        xgt_version = self.args.xgt_version or "latest"
 
         # Pull XGT image
         success, _ = self.run_command(
-            ['docker', 'pull', f'rocketgraph/xgt:{xgt_version}'],
-            f"Pull XGT image ({xgt_version})"
+            ["docker", "pull", f"rocketgraph/xgt:{xgt_version}"], f"Pull XGT image ({xgt_version})"
         )
         if not success:
             return False
@@ -216,11 +236,7 @@ class TestRunner:
         # Find available port
         for port in range(4367, 4378):
             try:
-                result = subprocess.run(
-                    ['netstat', '-tuln'],
-                    capture_output=True,
-                    text=True
-                )
+                result = subprocess.run(["netstat", "-tuln"], capture_output=True, text=True)
                 if f":{port} " not in result.stdout:
                     self.xgt_port = port
                     break
@@ -230,6 +246,7 @@ class TestRunner:
         if not self.xgt_port:
             # Fallback to random port
             import random
+
             self.xgt_port = random.randint(5000, 5999)
 
         self.log(f"📍 Using XGT port: {self.xgt_port}", Colors.BLUE)
@@ -238,10 +255,14 @@ class TestRunner:
         self.xgt_container = f"ci-test-xgt-{int(time.time())}"
 
         cmd = [
-            'docker', 'run', '-d',
-            '--name', self.xgt_container,
-            '-p', f'{self.xgt_port}:4367',
-            f'rocketgraph/xgt:{xgt_version}'
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            self.xgt_container,
+            "-p",
+            f"{self.xgt_port}:4367",
+            f"rocketgraph/xgt:{xgt_version}",
         ]
 
         success, _ = self.run_command(cmd, "Start XGT container")
@@ -253,9 +274,9 @@ class TestRunner:
         for _attempt in range(40):  # 2 minutes timeout
             try:
                 result = subprocess.run(
-                    ['curl', '-f', f'http://localhost:{self.xgt_port}/health'],
+                    ["curl", "-f", f"http://localhost:{self.xgt_port}/health"],
                     capture_output=True,
-                    timeout=5
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     self.log("✅ XGT server is ready!", Colors.GREEN)
@@ -271,23 +292,29 @@ class TestRunner:
     def run_xgt_integration_tests(self) -> bool:
         """Run XGT integration tests (mirrors xgt-integration-test job)"""
         if not self.args.with_xgt:
-            self.log("\n⏭️  Skipping XGT integration tests (use --with-xgt to enable)", Colors.YELLOW)
+            self.log(
+                "\n⏭️  Skipping XGT integration tests (use --with-xgt to enable)", Colors.YELLOW
+            )
             return True
 
         self.log("\n🧪 XGT Integration Tests", Colors.PURPLE)
 
         env = {
-            'XGT_HOST': 'localhost',
-            'XGT_PORT': str(self.xgt_port),
-            'XGT_USERNAME': 'admin',
-            'XGT_PASSWORD': '',
-            'ENVIRONMENT': 'testing'
+            "XGT_HOST": "localhost",
+            "XGT_PORT": str(self.xgt_port),
+            "XGT_USERNAME": "admin",
+            "XGT_PASSWORD": "",
+            "ENVIRONMENT": "testing",
         }
 
         cmd = [
-            sys.executable, '-m', 'pytest', 'tests/integration/test_xgt_datasets.py',
-            '--junitxml=xgt-integration-junit.xml',
-            '-v', '-s'
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/integration/test_xgt_datasets.py",
+            "--junitxml=xgt-integration-junit.xml",
+            "-v",
+            "-s",
         ]
 
         success, _ = self.run_command(cmd, "XGT integration tests", env=env)
@@ -300,9 +327,7 @@ class TestRunner:
             self.log("📋 XGT Container Logs:", Colors.YELLOW)
             try:
                 result = subprocess.run(
-                    ['docker', 'logs', self.xgt_container],
-                    capture_output=True,
-                    text=True
+                    ["docker", "logs", self.xgt_container], capture_output=True, text=True
                 )
                 if result.stderr:
                     pass
@@ -313,10 +338,8 @@ class TestRunner:
         """Clean up XGT container"""
         if self.xgt_container:
             self.log("🧹 Cleaning up XGT container...", Colors.YELLOW)
-            subprocess.run(['docker', 'stop', self.xgt_container],
-                         capture_output=True)
-            subprocess.run(['docker', 'rm', self.xgt_container],
-                         capture_output=True)
+            subprocess.run(["docker", "stop", self.xgt_container], capture_output=True)
+            subprocess.run(["docker", "rm", self.xgt_container], capture_output=True)
 
     def run_security_scans(self) -> bool:
         """Run additional security scans"""
@@ -326,7 +349,7 @@ class TestRunner:
         self.log("\n🔒 Security Scans", Colors.PURPLE)
 
         # Safety check for dependencies
-        cmd = [sys.executable, '-m', 'safety', 'check', '--json']
+        cmd = [sys.executable, "-m", "safety", "check", "--json"]
         success, _ = self.run_command(cmd, "Safety dependency scan")
         self.results["Safety scan"] = success
 
@@ -336,9 +359,9 @@ class TestRunner:
         """Print test results summary"""
         elapsed = time.time() - self.start_time
 
-        self.log(f"\n{'='*60}", Colors.BOLD)
+        self.log(f"\n{'=' * 60}", Colors.BOLD)
         self.log("📊 TEST RESULTS SUMMARY", Colors.BOLD)
-        self.log(f"{'='*60}", Colors.BOLD)
+        self.log(f"{'=' * 60}", Colors.BOLD)
 
         passed = sum(1 for result in self.results.values() if result)
         total = len(self.results)
@@ -348,8 +371,10 @@ class TestRunner:
             color = Colors.GREEN if result else Colors.RED
             self.log(f"{status} {test_name}", color)
 
-        self.log(f"\n📈 Overall: {passed}/{total} tests passed",
-                Colors.GREEN if passed == total else Colors.RED)
+        self.log(
+            f"\n📈 Overall: {passed}/{total} tests passed",
+            Colors.GREEN if passed == total else Colors.RED,
+        )
         self.log(f"⏱️  Total time: {elapsed:.1f}s", Colors.BLUE)
 
         if passed == total:
@@ -414,19 +439,24 @@ Examples:
   %(prog)s --all-python-versions   # Test multiple Python versions
   %(prog)s --security-scans        # Include security scans
   %(prog)s --fail-fast             # Stop on first failure
-        """
+        """,
     )
 
-    parser.add_argument('--with-xgt', action='store_true',
-                       help='Include XGT integration tests (requires Docker)')
-    parser.add_argument('--xgt-version', default='latest',
-                       help='XGT Docker image version (default: latest)')
-    parser.add_argument('--all-python-versions', action='store_true',
-                       help='Test against multiple Python versions if available')
-    parser.add_argument('--security-scans', action='store_true',
-                       help='Include additional security scans')
-    parser.add_argument('--fail-fast', action='store_true',
-                       help='Stop on first test failure')
+    parser.add_argument(
+        "--with-xgt", action="store_true", help="Include XGT integration tests (requires Docker)"
+    )
+    parser.add_argument(
+        "--xgt-version", default="latest", help="XGT Docker image version (default: latest)"
+    )
+    parser.add_argument(
+        "--all-python-versions",
+        action="store_true",
+        help="Test against multiple Python versions if available",
+    )
+    parser.add_argument(
+        "--security-scans", action="store_true", help="Include additional security scans"
+    )
+    parser.add_argument("--fail-fast", action="store_true", help="Stop on first test failure")
 
     args = parser.parse_args()
 
@@ -437,5 +467,5 @@ Examples:
     sys.exit(0 if success else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -21,7 +21,7 @@ def main():
         workers=settings.WORKERS if not settings.DEBUG else 1,
         reload=settings.DEBUG,
         log_level=settings.LOG_LEVEL.lower(),
-        access_log=True
+        access_log=True,
     )
 
 

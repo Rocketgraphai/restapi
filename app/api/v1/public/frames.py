@@ -6,16 +6,16 @@ Frames can be vertex frames, edge frames, or table frames.
 """
 
 import logging
-from typing import Any, Optional, Annotated
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 
+from ....auth.passthrough_middleware import require_xgt_authentication
+from ....auth.passthrough_models import AuthenticatedXGTUser
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
 from ....utils.xgt_user_operations import create_user_xgt_operations
-from ....auth.passthrough_middleware import require_xgt_authentication
-from ....auth.passthrough_models import AuthenticatedXGTUser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,16 +23,17 @@ logger = logging.getLogger(__name__)
 
 class FrameInfo(BaseModel):
     """Information about a frame."""
+
     name: str = Field(..., description="Frame name")
     full_name: str = Field(..., description="Fully qualified frame name")
     namespace: str = Field(..., description="Namespace of the frame")
     frame_type: str = Field(..., description="Type of frame (vertex, edge, table)")
     num_rows: int = Field(..., description="Number of rows in the frame")
     schema_definition: list[list[Any]] = Field(..., description="Frame schema definition")
-    
+
     # Additional fields for vertex frames
     key: Optional[str] = Field(None, description="Primary key column (vertex frames only)")
-    
+
     # Additional fields for edge frames
     source_name: Optional[str] = Field(None, description="Source frame name (edge frames only)")
     target_name: Optional[str] = Field(None, description="Target frame name (edge frames only)")
@@ -52,7 +53,7 @@ class FrameInfo(BaseModel):
                 "source_name": None,
                 "target_name": None,
                 "source_key": None,
-                "target_key": None
+                "target_key": None,
             }
         }
     )
@@ -60,6 +61,7 @@ class FrameInfo(BaseModel):
 
 class FramesListResponse(BaseModel):
     """Response for frames listing."""
+
     frames: list[FrameInfo] = Field(..., description="List of frames")
     total_count: int = Field(..., description="Total number of frames")
     namespaces: list[str] = Field(..., description="Namespaces included in the results")
@@ -79,7 +81,7 @@ class FramesListResponse(BaseModel):
                         "source_name": None,
                         "target_name": None,
                         "source_key": None,
-                        "target_key": None
+                        "target_key": None,
                     },
                     {
                         "name": "purchases",
@@ -92,11 +94,11 @@ class FramesListResponse(BaseModel):
                         "source_name": "customers",
                         "target_name": "products",
                         "source_key": "id",
-                        "target_key": "id"
-                    }
+                        "target_key": "id",
+                    },
                 ],
                 "total_count": 2,
-                "namespaces": ["ecommerce"]
+                "namespaces": ["ecommerce"],
             }
         }
     )
@@ -104,6 +106,7 @@ class FramesListResponse(BaseModel):
 
 class FrameDataResponse(BaseModel):
     """Response for frame data retrieval."""
+
     frame_name: str = Field(..., description="Name of the frame")
     frame_type: str = Field(..., description="Type of frame (vertex, edge, table)")
     namespace: Optional[str] = Field(None, description="Namespace of the frame")
@@ -123,12 +126,12 @@ class FrameDataResponse(BaseModel):
                 "columns": ["id", "name", "email", "created_at"],
                 "rows": [
                     ["cust_001", "John Doe", "john@example.com", "2024-01-15T10:30:00"],
-                    ["cust_002", "Jane Smith", "jane@example.com", "2024-01-16T14:20:00"]
+                    ["cust_002", "Jane Smith", "jane@example.com", "2024-01-16T14:20:00"],
                 ],
                 "total_rows": 10000,
                 "offset": 0,
                 "limit": 100,
-                "returned_rows": 2
+                "returned_rows": 2,
             }
         }
     )
@@ -139,129 +142,126 @@ async def list_frames(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     namespace: Optional[str] = Query(
         default=None,
-        description="Filter frames by namespace (if not specified, all namespaces except xgt__)"
+        description="Filter frames by namespace (if not specified, all namespaces except xgt__)",
     ),
     frame_type: Optional[str] = Query(
-        default=None,
-        description="Filter frames by type (vertex, edge, table)"
-    )
+        default=None, description="Filter frames by type (vertex, edge, table)"
+    ),
 ):
     """
     List all frames across all namespaces.
-    
-    Returns information about all frames (vertex, edge, and table frames) 
+
+    Returns information about all frames (vertex, edge, and table frames)
     across all accessible namespaces, excluding the system xgt__ namespace.
     Useful for discovering available data structures before querying.
-    
+
     Args:
         namespace: Filter frames by specific namespace (optional)
         frame_type: Filter frames by type (vertex, edge, table) (optional)
-    
+
     Returns:
         List of frames with their metadata
-        
+
     Raises:
         HTTPException: If XGT connection fails or operation errors occur
     """
     try:
         logger.info("Listing all frames from XGT server")
-        
+
         # Create user-specific XGT operations instance
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-        
+
         # Get datasets information from XGT (this includes frame info)
         datasets_raw = user_xgt_ops.datasets_info()
-        
+
         frames = []
         namespaces_found = set()
-        
+
         for dataset_raw in datasets_raw:
-            dataset_namespace = dataset_raw['name']
-            
+            dataset_namespace = dataset_raw["name"]
+
             # Skip the xgt__ namespace
-            if dataset_namespace == 'xgt__':
+            if dataset_namespace == "xgt__":
                 continue
-                
+
             # Apply namespace filter if specified
             if namespace and dataset_namespace != namespace:
                 continue
-                
+
             namespaces_found.add(dataset_namespace)
-            
+
             # Process vertex frames
-            for vertex_raw in dataset_raw.get('vertices', []):
+            for vertex_raw in dataset_raw.get("vertices", []):
                 # Apply frame type filter if specified
-                if frame_type and frame_type != 'vertex':
+                if frame_type and frame_type != "vertex":
                     continue
-                    
+
                 frame_info = FrameInfo(
-                    name=vertex_raw['name'],
+                    name=vertex_raw["name"],
                     full_name=f"{dataset_namespace}__{vertex_raw['name']}",
                     namespace=dataset_namespace,
-                    frame_type='vertex',
-                    num_rows=vertex_raw['num_rows'],
-                    schema_definition=vertex_raw['schema'],
-                    key=vertex_raw['key'],
+                    frame_type="vertex",
+                    num_rows=vertex_raw["num_rows"],
+                    schema_definition=vertex_raw["schema"],
+                    key=vertex_raw["key"],
                     source_name=None,
                     target_name=None,
                     source_key=None,
-                    target_key=None
+                    target_key=None,
                 )
                 frames.append(frame_info)
-            
+
             # Process edge frames
-            for edge_raw in dataset_raw.get('edges', []):
+            for edge_raw in dataset_raw.get("edges", []):
                 # Apply frame type filter if specified
-                if frame_type and frame_type != 'edge':
+                if frame_type and frame_type != "edge":
                     continue
-                    
+
                 frame_info = FrameInfo(
-                    name=edge_raw['name'],
+                    name=edge_raw["name"],
                     full_name=f"{dataset_namespace}__{edge_raw['name']}",
                     namespace=dataset_namespace,
-                    frame_type='edge',
-                    num_rows=edge_raw['num_rows'],
-                    schema_definition=edge_raw['schema'],
+                    frame_type="edge",
+                    num_rows=edge_raw["num_rows"],
+                    schema_definition=edge_raw["schema"],
                     key=None,
-                    source_name=edge_raw['source_frame'],
-                    target_name=edge_raw['target_frame'],
-                    source_key=edge_raw['source_key'],
-                    target_key=edge_raw['target_key']
+                    source_name=edge_raw["source_frame"],
+                    target_name=edge_raw["target_frame"],
+                    source_key=edge_raw["source_key"],
+                    target_key=edge_raw["target_key"],
                 )
                 frames.append(frame_info)
-            
+
             # Process table frames
-            for table_raw in dataset_raw.get('tables', []):
+            for table_raw in dataset_raw.get("tables", []):
                 # Apply frame type filter if specified
-                if frame_type and frame_type != 'table':
+                if frame_type and frame_type != "table":
                     continue
-                    
+
                 frame_info = FrameInfo(
-                    name=table_raw['name'],
+                    name=table_raw["name"],
                     full_name=f"{dataset_namespace}__{table_raw['name']}",
                     namespace=dataset_namespace,
-                    frame_type='table',
-                    num_rows=table_raw['num_rows'],
-                    schema_definition=table_raw['schema'],
+                    frame_type="table",
+                    num_rows=table_raw["num_rows"],
+                    schema_definition=table_raw["schema"],
                     key=None,  # Table frames don't have keys
                     source_name=None,
                     target_name=None,
                     source_key=None,
-                    target_key=None
+                    target_key=None,
                 )
                 frames.append(frame_info)
-        
+
         # Sort frames by namespace, then by frame name
         frames.sort(key=lambda f: (f.namespace, f.name))
-        
+
         logger.info(f"Found {len(frames)} frames across {len(namespaces_found)} namespaces")
-        
+
         return FramesListResponse(
-            frames=frames,
-            total_count=len(frames),
-            namespaces=sorted(list(namespaces_found))
+            frames=frames, total_count=len(frames), namespaces=sorted(namespaces_found)
         )
-        
+
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
         raise HTTPException(
@@ -269,8 +269,8 @@ async def list_frames(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -279,8 +279,8 @@ async def list_frames(
             detail={
                 "error": "XGT_OPERATION_ERROR",
                 "message": "Failed to retrieve frames",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except Exception as e:
         logger.error(f"Unexpected error listing frames: {e}")
@@ -289,8 +289,8 @@ async def list_frames(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
@@ -298,17 +298,10 @@ async def list_frames(
 async def get_frame_data(
     frame_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description="Starting offset for data retrieval"
-    ),
+    offset: int = Query(default=0, ge=0, description="Starting offset for data retrieval"),
     limit: int = Query(
-        default=100,
-        ge=1,
-        le=10000,
-        description="Maximum number of rows to return (max 10,000)"
-    )
+        default=100, ge=1, le=10000, description="Maximum number of rows to return (max 10,000)"
+    ),
 ):
     """
     Get data rows from a specific frame.
@@ -339,11 +332,7 @@ async def get_frame_data(
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get frame data from XGT
-        frame_data = user_xgt_ops.get_frame_data(
-            frame_name=frame_name,
-            offset=offset,
-            limit=limit
-        )
+        frame_data = user_xgt_ops.get_frame_data(frame_name=frame_name, offset=offset, limit=limit)
 
         logger.info(f"Retrieved {frame_data['returned_rows']} rows from {frame_name}")
 
@@ -356,8 +345,8 @@ async def get_frame_data(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -368,8 +357,8 @@ async def get_frame_data(
                 detail={
                     "error": "FRAME_NOT_FOUND",
                     "message": f"Frame '{frame_name}' not found or not accessible",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
         else:
             raise HTTPException(
@@ -377,8 +366,8 @@ async def get_frame_data(
                 detail={
                     "error": "XGT_OPERATION_ERROR",
                     "message": f"Failed to retrieve data from frame '{frame_name}'",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
     except Exception as e:
         logger.error(f"Unexpected error getting frame data: {e}")
@@ -387,6 +376,6 @@ async def get_frame_data(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )

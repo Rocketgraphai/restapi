@@ -19,6 +19,7 @@ router = APIRouter()
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     timestamp: datetime
     version: str
@@ -28,6 +29,7 @@ class HealthResponse(BaseModel):
 
 class ReadinessResponse(BaseModel):
     """Readiness check response model."""
+
     status: str
     ready: bool
     checks: dict[str, bool]
@@ -52,12 +54,7 @@ async def health_check():
     time.time()
 
     # Initialize service status
-    services = {
-        "api": "healthy",
-        "xgt": "unknown",
-        "mongodb": "unknown",
-        "redis": "unknown"
-    }
+    services = {"api": "healthy", "xgt": "unknown", "mongodb": "unknown", "redis": "unknown"}
 
     overall_status = "healthy"
 
@@ -66,24 +63,18 @@ async def health_check():
         import xgt
 
         # Test actual XGT server connectivity without namespace
-        auth = xgt.BasicAuth(
-            username=settings.XGT_USERNAME,
-            password=settings.XGT_PASSWORD
-        )
+        auth = xgt.BasicAuth(username=settings.XGT_USERNAME, password=settings.XGT_PASSWORD)
 
         conn_flags = {}
         if settings.XGT_USE_SSL:
             conn_flags = {
-                'ssl': True,
-                'ssl_server_cert': settings.XGT_SSL_CERT,
-                'ssl_server_cn': settings.XGT_SERVER_CN
+                "ssl": True,
+                "ssl_server_cert": settings.XGT_SSL_CERT,
+                "ssl_server_cn": settings.XGT_SERVER_CN,
             }
 
         connection = xgt.Connection(
-            host=settings.XGT_HOST,
-            port=settings.XGT_PORT,
-            auth=auth,
-            flags=conn_flags
+            host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags
         )
 
         # Test actual server connectivity and protocol compatibility
@@ -93,17 +84,27 @@ async def health_check():
 
         # Get the actual client protocol version from SDK
         import xgt.connection
+
         client_protocol = xgt.connection.__protobuf_version__  # e.g., (1, 1, 0)
 
         # Use same compatibility logic as SDK: server_protocol >= client_protocol
-        if server_protocol and client_protocol and len(server_protocol) >= 2 and len(client_protocol) >= 2:
+        if (
+            server_protocol
+            and client_protocol
+            and len(server_protocol) >= 2
+            and len(client_protocol) >= 2
+        ):
             # Compare as tuples - Python does lexicographic comparison
             protocol_compatible = server_protocol >= client_protocol
 
             if protocol_compatible:
-                services["xgt"] = f"healthy (server:v{server_version} protocol:{server_protocol}, sdk:v{sdk_version} client_protocol:{client_protocol})"
+                services["xgt"] = (
+                    f"healthy (server:v{server_version} protocol:{server_protocol}, sdk:v{sdk_version} client_protocol:{client_protocol})"
+                )
             else:
-                services["xgt"] = f"degraded: protocol incompatible (server:{server_protocol} < client:{client_protocol})"
+                services["xgt"] = (
+                    f"degraded: protocol incompatible (server:{server_protocol} < client:{client_protocol})"
+                )
                 overall_status = "degraded"
         else:
             # Fallback if protocol parsing fails
@@ -150,7 +151,7 @@ async def health_check():
         timestamp=datetime.now(timezone.utc),
         version=settings.APP_VERSION,
         uptime_seconds=time.time() - _start_time,
-        services=services
+        services=services,
     )
 
 
@@ -168,18 +169,14 @@ async def readiness_check():
     checks = {
         "startup_complete": True,  # Always true once we're running
         "configuration_loaded": True,  # Always true if we got this far
-        "dependencies_available": True  # Could check critical dependencies
+        "dependencies_available": True,  # Could check critical dependencies
     }
 
     # All checks must pass for ready status
     ready = all(checks.values())
     status = "ready" if ready else "not_ready"
 
-    return ReadinessResponse(
-        status=status,
-        ready=ready,
-        checks=checks
-    )
+    return ReadinessResponse(status=status, ready=ready, checks=checks)
 
 
 @router.get("/live")
@@ -220,19 +217,19 @@ async def version_info():
             "version": settings.APP_VERSION,
             "environment": settings.ENVIRONMENT,
             "uptime_seconds": time.time() - _start_time,
-            "build_timestamp": datetime.now(timezone.utc).isoformat()
+            "build_timestamp": datetime.now(timezone.utc).isoformat(),
         },
         "xgt": {
             "server_version": None,
             "server_protocol": None,
             "sdk_version": None,
             "client_protocol": None,
-            "connection_status": "disconnected"
+            "connection_status": "disconnected",
         },
         "system": {
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            "platform": sys.platform
-        }
+            "platform": sys.platform,
+        },
     }
 
     # Try to get XGT version information
@@ -244,6 +241,7 @@ async def version_info():
 
         # Get client protocol from SDK
         import xgt.connection
+
         client_protocol = xgt.connection.__protobuf_version__
 
         version_info["xgt"]["sdk_version"] = sdk_version
@@ -251,24 +249,18 @@ async def version_info():
 
         # Try to connect to get server information
         try:
-            auth = xgt.BasicAuth(
-                username=settings.XGT_USERNAME,
-                password=settings.XGT_PASSWORD
-            )
+            auth = xgt.BasicAuth(username=settings.XGT_USERNAME, password=settings.XGT_PASSWORD)
 
             conn_flags = {}
             if settings.XGT_USE_SSL:
                 conn_flags = {
-                    'ssl': True,
-                    'ssl_server_cert': settings.XGT_SSL_CERT,
-                    'ssl_server_cn': settings.XGT_SERVER_CN
+                    "ssl": True,
+                    "ssl_server_cert": settings.XGT_SSL_CERT,
+                    "ssl_server_cn": settings.XGT_SERVER_CN,
                 }
 
             connection = xgt.Connection(
-                host=settings.XGT_HOST,
-                port=settings.XGT_PORT,
-                auth=auth,
-                flags=conn_flags
+                host=settings.XGT_HOST, port=settings.XGT_PORT, auth=auth, flags=conn_flags
             )
 
             # Get server version and protocol
@@ -280,11 +272,18 @@ async def version_info():
             version_info["xgt"]["connection_status"] = "connected"
 
             # Add compatibility check
-            if server_protocol and client_protocol and len(server_protocol) >= 2 and len(client_protocol) >= 2:
+            if (
+                server_protocol
+                and client_protocol
+                and len(server_protocol) >= 2
+                and len(client_protocol) >= 2
+            ):
                 protocol_compatible = server_protocol >= client_protocol
                 version_info["xgt"]["protocol_compatible"] = protocol_compatible
                 if not protocol_compatible:
-                    version_info["xgt"]["compatibility_warning"] = f"Server protocol {server_protocol} < Client protocol {client_protocol}"
+                    version_info["xgt"]["compatibility_warning"] = (
+                        f"Server protocol {server_protocol} < Client protocol {client_protocol}"
+                    )
 
             connection.close()
 

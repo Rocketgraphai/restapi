@@ -32,6 +32,17 @@ dev = [
 [tool.ruff]
 target-version = "py39"
 line-length = 100
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -51,24 +62,23 @@ ignore = [
     "S104",  # Possible binding to all interfaces
     "S608",  # Possible SQL injection via string formatting
     "B008",  # Function call in argument default
-]
-exclude = [
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "__pycache__",
-    "venv",
-    ".venv",
+    "B904",  # Exception chaining - project doesn't use from clause
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101",  # Use of assert is fine in tests
+    "S105",  # Hardcoded password in tests is fine
+    "S106",  # Hardcoded password in tests is fine
     "PLR2004",  # Magic values are fine in tests
+    "T201",  # Print statements are fine in test scripts
+    "F401",  # Unused imports are fine in tests
 ]
+"**/test_*.py" = ["T201", "S105", "S106", "F401"]
+"debug_token.py" = ["T201", "F541"]
+"test_*.py" = ["T201", "S105", "S106", "F401", "E722", "S110"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["app"]
 force-sort-within-sections = true
 

@@ -37,6 +37,7 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
 def mock_settings():
     """Mock application settings for testing."""
     from app.config.app_config import Settings
+
     return Settings(
         APP_NAME="Test API",
         APP_VERSION="0.1.0",
@@ -48,7 +49,7 @@ def mock_settings():
         XGT_USERNAME="test",
         XGT_PASSWORD="test",
         MONGODB_URI="mongodb://localhost:27017/test",
-        REDIS_URL="redis://localhost:6379"
+        REDIS_URL="redis://localhost:6379",
     )
 
 
@@ -58,4 +59,5 @@ def reset_settings():
     yield
     # Clear any cached settings
     from app.config import app_config
+
     app_config._settings = None

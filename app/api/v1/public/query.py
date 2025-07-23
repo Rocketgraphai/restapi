@@ -6,16 +6,16 @@ Provides async Cypher query execution with job management.
 
 import logging
 import time
-from typing import Any, Optional, Annotated
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 
+from ....auth.passthrough_middleware import require_xgt_authentication
+from ....auth.passthrough_models import AuthenticatedXGTUser
 from ....config.app_config import get_settings
 from ....utils.exceptions import XGTConnectionError, XGTOperationError
 from ....utils.xgt_user_operations import create_user_xgt_operations
-from ....auth.passthrough_middleware import require_xgt_authentication
-from ....auth.passthrough_models import AuthenticatedXGTUser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,33 +23,27 @@ logger = logging.getLogger(__name__)
 
 class QueryRequest(BaseModel):
     """Request model for executing queries."""
+
     query: str = Field(..., description="Cypher query to execute", min_length=1)
     parameters: Optional[dict[str, Any]] = Field(
-        default=None,
-        description="Query parameters for substitution"
+        default=None, description="Query parameters for substitution"
     )
     format: str = Field(
         default="json",
         description="Result format (json, csv, parquet)",
-        pattern="^(json|csv|parquet)$"
+        pattern="^(json|csv|parquet)$",
     )
     limit: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=1000000,
-        description="Maximum number of results to return"
+        default=None, ge=1, le=1000000, description="Maximum number of results to return"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "query": "MATCH (c:Customer)-[p:PURCHASED]->(pr:Product) WHERE pr.category = $category RETURN c.name, p.amount, pr.name LIMIT $limit",
-                "parameters": {
-                    "category": "electronics",
-                    "limit": 100
-                },
+                "parameters": {"category": "electronics", "limit": 100},
                 "format": "json",
-                "limit": 1000
+                "limit": 1000,
             }
         }
     )
@@ -57,14 +51,14 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     """Response for query execution."""
+
     job_id: int = Field(..., description="Job ID for tracking query execution")
     status: str = Field(..., description="Current job status")
     query: str = Field(..., description="The executed query")
     dataset_name: str = Field(..., description="Dataset the query was executed against")
     submitted_at: float = Field(..., description="Unix timestamp when query was submitted")
     estimated_completion: Optional[str] = Field(
-        None,
-        description="Estimated completion time (ISO 8601)"
+        None, description="Estimated completion time (ISO 8601)"
     )
 
     model_config = ConfigDict(
@@ -75,7 +69,7 @@ class QueryResponse(BaseModel):
                 "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
                 "dataset_name": "ecommerce",
                 "submitted_at": 1642248000.0,
-                "estimated_completion": "2024-01-15T10:32:00Z"
+                "estimated_completion": "2024-01-15T10:32:00Z",
             }
         }
     )
@@ -83,6 +77,7 @@ class QueryResponse(BaseModel):
 
 class QueryStatusResponse(BaseModel):
     """Response for query status."""
+
     job_id: int = Field(..., description="Job ID")
     status: str = Field(..., description="Current job status")
     progress: Optional[float] = Field(None, description="Completion progress (0.0-1.0)")
@@ -100,7 +95,7 @@ class QueryStatusResponse(BaseModel):
                 "start_time": 1642248000.0,
                 "end_time": 1642248045.0,
                 "processing_time_ms": 45000,
-                "error_message": None
+                "error_message": None,
             }
         }
     )
@@ -108,6 +103,7 @@ class QueryStatusResponse(BaseModel):
 
 class QueryResultsResponse(BaseModel):
     """Response for query results."""
+
     job_id: int = Field(..., description="Job ID")
     status: str = Field(..., description="Job status")
     columns: Optional[list[str]] = Field(None, description="Column names")
@@ -116,7 +112,9 @@ class QueryResultsResponse(BaseModel):
     limit: int = Field(..., description="Number of results requested")
     returned_rows: int = Field(..., description="Number of rows returned")
     total_rows: Optional[int] = Field(None, description="Total number of result rows")
-    result_metadata: Optional[dict[str, Any]] = Field(None, description="Additional result metadata")
+    result_metadata: Optional[dict[str, Any]] = Field(
+        None, description="Additional result metadata"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -124,18 +122,12 @@ class QueryResultsResponse(BaseModel):
                 "job_id": 12345,
                 "status": "completed",
                 "columns": ["customer_name", "amount", "product_name"],
-                "rows": [
-                    ["John Doe", 299.99, "Smartphone"],
-                    ["Jane Smith", 1299.99, "Laptop"]
-                ],
+                "rows": [["John Doe", 299.99, "Smartphone"], ["Jane Smith", 1299.99, "Laptop"]],
                 "offset": 0,
                 "limit": 1000,
                 "returned_rows": 2,
                 "total_rows": 1250,
-                "result_metadata": {
-                    "execution_time_ms": 45000,
-                    "query_hash": "sha256_abc123..."
-                }
+                "result_metadata": {"execution_time_ms": 45000, "query_hash": "sha256_abc123..."},
             }
         }
     )
@@ -143,6 +135,7 @@ class QueryResultsResponse(BaseModel):
 
 class JobHistoryItem(BaseModel):
     """Individual job in history listing."""
+
     job_id: int = Field(..., description="Job ID")
     status: str = Field(..., description="Job status")
     query: str = Field(..., description="Query that was executed")
@@ -162,7 +155,7 @@ class JobHistoryItem(BaseModel):
                 "submitted_at": 1642248000.0,
                 "start_time": 1642248000.0,
                 "end_time": 1642248045.0,
-                "processing_time_ms": 45000
+                "processing_time_ms": 45000,
             }
         }
     )
@@ -170,6 +163,7 @@ class JobHistoryItem(BaseModel):
 
 class JobHistoryResponse(BaseModel):
     """Response for job history listing."""
+
     jobs: list[JobHistoryItem] = Field(..., description="List of jobs in history")
     total_count: int = Field(..., description="Total number of jobs")
     page: int = Field(..., description="Current page number")
@@ -188,13 +182,13 @@ class JobHistoryResponse(BaseModel):
                         "submitted_at": 1642248000.0,
                         "start_time": 1642248000.0,
                         "end_time": 1642248045.0,
-                        "processing_time_ms": 45000
+                        "processing_time_ms": 45000,
                     }
                 ],
                 "total_count": 1,
                 "page": 1,
                 "per_page": 50,
-                "has_more": False
+                "has_more": False,
             }
         }
     )
@@ -204,9 +198,11 @@ class JobHistoryResponse(BaseModel):
 async def list_job_history(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     page: int = Query(default=1, ge=1, description="Page number (1-based)"),
-    per_page: int = Query(default=50, ge=1, le=200, description="Number of jobs per page (max 200)"),
+    per_page: int = Query(
+        default=50, ge=1, le=200, description="Number of jobs per page (max 200)"
+    ),
     status: Optional[str] = Query(default=None, description="Filter by job status"),
-    dataset_name: Optional[str] = Query(default=None, description="Filter by dataset name")
+    dataset_name: Optional[str] = Query(default=None, description="Filter by dataset name"),
 ):
     """
     List all jobs in the query history.
@@ -235,39 +231,37 @@ async def list_job_history(
 
         # For now, return a basic job history structure
         # TODO: Implement proper job history retrieval using user credentials
-        job_history = {
-            'jobs': [],
-            'total_count': 0,
-            'has_more': False
-        }
+        job_history = {"jobs": [], "total_count": 0, "has_more": False}
 
         logger.info(f"Retrieved {len(job_history['jobs'])} jobs from history")
 
         # Convert to response format
         jobs = []
-        for job_info in job_history['jobs']:
+        for job_info in job_history["jobs"]:
             # Calculate processing time if available
             processing_time_ms = None
-            if job_info.get('start_time') and job_info.get('end_time'):
-                processing_time_ms = int((job_info['end_time'] - job_info['start_time']) * 1000)
+            if job_info.get("start_time") and job_info.get("end_time"):
+                processing_time_ms = int((job_info["end_time"] - job_info["start_time"]) * 1000)
 
-            jobs.append(JobHistoryItem(
-                job_id=job_info['job_id'],
-                status=job_info['status'],
-                query=job_info['query'],
-                dataset_name=job_info.get('dataset_name'),
-                submitted_at=job_info['submitted_at'],
-                start_time=job_info.get('start_time'),
-                end_time=job_info.get('end_time'),
-                processing_time_ms=processing_time_ms
-            ))
+            jobs.append(
+                JobHistoryItem(
+                    job_id=job_info["job_id"],
+                    status=job_info["status"],
+                    query=job_info["query"],
+                    dataset_name=job_info.get("dataset_name"),
+                    submitted_at=job_info["submitted_at"],
+                    start_time=job_info.get("start_time"),
+                    end_time=job_info.get("end_time"),
+                    processing_time_ms=processing_time_ms,
+                )
+            )
 
         return JobHistoryResponse(
             jobs=jobs,
-            total_count=job_history['total_count'],
+            total_count=job_history["total_count"],
             page=page,
             per_page=per_page,
-            has_more=job_history.get('has_more', False)
+            has_more=job_history.get("has_more", False),
         )
 
     except XGTConnectionError as e:
@@ -277,8 +271,8 @@ async def list_job_history(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -287,8 +281,8 @@ async def list_job_history(
             detail={
                 "error": "XGT_OPERATION_ERROR",
                 "message": "Failed to retrieve job history",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except Exception as e:
         logger.error(f"Unexpected error getting job history: {e}")
@@ -297,8 +291,8 @@ async def list_job_history(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
@@ -306,7 +300,7 @@ async def list_job_history(
 async def execute_query(
     dataset_name: str,
     query_request: QueryRequest,
-    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
+    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
 ):
     """
     Execute a Cypher query against a dataset.
@@ -334,26 +328,26 @@ async def execute_query(
 
         # Execute the query directly using user's credentials
         results = user_xgt_ops.execute_query(query_request.query)
-        
+
         # Create a mock job response for now
         # TODO: Implement proper job scheduling with user credentials
         job_info = {
-            'job_id': hash(query_request.query + str(time.time())) % 1000000,
-            'status': 'completed',
-            'query': query_request.query,
-            'dataset_name': dataset_name,
-            'submitted_at': time.time()
+            "job_id": hash(query_request.query + str(time.time())) % 1000000,
+            "status": "completed",
+            "query": query_request.query,
+            "dataset_name": dataset_name,
+            "submitted_at": time.time(),
         }
 
         logger.info(f"Query scheduled with job ID: {job_info['job_id']}")
 
         return QueryResponse(
-            job_id=job_info['job_id'],
-            status=job_info['status'],
-            query=job_info['query'],
-            dataset_name=job_info['dataset_name'],
-            submitted_at=job_info['submitted_at'],
-            estimated_completion=None  # XGT doesn't provide this yet
+            job_id=job_info["job_id"],
+            status=job_info["status"],
+            query=job_info["query"],
+            dataset_name=job_info["dataset_name"],
+            submitted_at=job_info["submitted_at"],
+            estimated_completion=None,  # XGT doesn't provide this yet
         )
 
     except XGTConnectionError as e:
@@ -363,8 +357,8 @@ async def execute_query(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -375,8 +369,8 @@ async def execute_query(
                 detail={
                     "error": "INVALID_QUERY",
                     "message": "Query contains forbidden operations",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
         else:
             raise HTTPException(
@@ -384,8 +378,8 @@ async def execute_query(
                 detail={
                     "error": "XGT_OPERATION_ERROR",
                     "message": "Failed to execute query",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
     except Exception as e:
         logger.error(f"Unexpected error executing query: {e}")
@@ -394,15 +388,14 @@ async def execute_query(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
 @router.get("/query/{job_id}/status", response_model=QueryStatusResponse)
 async def get_query_status(
-    job_id: int,
-    current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
+    job_id: int, current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)]
 ):
     """
     Get the status of a query job.
@@ -428,26 +421,26 @@ async def get_query_status(
         # For now, return a mock status
         # TODO: Implement proper job status retrieval using user credentials
         status_info = {
-            'job_id': job_id,
-            'status': 'completed',
-            'progress': 1.0,
-            'start_time': time.time() - 60,
-            'end_time': time.time()
+            "job_id": job_id,
+            "status": "completed",
+            "progress": 1.0,
+            "start_time": time.time() - 60,
+            "end_time": time.time(),
         }
 
         # Calculate processing time if available
         processing_time_ms = None
-        if status_info.get('start_time') and status_info.get('end_time'):
-            processing_time_ms = int((status_info['end_time'] - status_info['start_time']) * 1000)
+        if status_info.get("start_time") and status_info.get("end_time"):
+            processing_time_ms = int((status_info["end_time"] - status_info["start_time"]) * 1000)
 
         return QueryStatusResponse(
-            job_id=status_info['job_id'],
-            status=status_info['status'],
-            progress=status_info.get('progress'),
-            start_time=status_info.get('start_time'),
-            end_time=status_info.get('end_time'),
+            job_id=status_info["job_id"],
+            status=status_info["status"],
+            progress=status_info.get("progress"),
+            start_time=status_info.get("start_time"),
+            end_time=status_info.get("end_time"),
             processing_time_ms=processing_time_ms,
-            error_message=None  # XGT doesn't provide error details in status
+            error_message=None,  # XGT doesn't provide error details in status
         )
 
     except XGTConnectionError as e:
@@ -457,8 +450,8 @@ async def get_query_status(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -469,8 +462,8 @@ async def get_query_status(
                 detail={
                     "error": "JOB_NOT_FOUND",
                     "message": f"Query job {job_id} not found",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
         else:
             raise HTTPException(
@@ -478,8 +471,8 @@ async def get_query_status(
                 detail={
                     "error": "XGT_OPERATION_ERROR",
                     "message": "Failed to get job status",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
     except Exception as e:
         logger.error(f"Unexpected error getting job status: {e}")
@@ -488,8 +481,8 @@ async def get_query_status(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )
 
 
@@ -498,7 +491,7 @@ async def get_query_results(
     job_id: int,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     offset: int = 0,
-    limit: int = 1000
+    limit: int = 1000,
 ):
     """
     Get results from a completed query job.
@@ -527,24 +520,24 @@ async def get_query_results(
         results = user_xgt_ops.execute_query(
             f"/* Get results for job {job_id} with offset {offset} limit {limit} */"
         )
-        
+
         # For now, return a simplified response structure
         # TODO: Implement proper job result retrieval from XGT using user credentials
         results_info = {
-            'status': 'completed',
-            'results': results,
-            'columns': [f"col_{i}" for i in range(len(results[0]))] if results else [],
-            'total_rows': len(results)
+            "status": "completed",
+            "results": results,
+            "columns": [f"col_{i}" for i in range(len(results[0]))] if results else [],
+            "total_rows": len(results),
         }
 
         # Parse results based on job status
-        if results_info['status'] == 'completed':
-            results = results_info.get('results', [])
+        if results_info["status"] == "completed":
+            results = results_info.get("results", [])
 
             # Extract columns and rows from results
-            columns = results_info.get('columns', [])
-            rows = results_info.get('results', [])
-            
+            columns = results_info.get("columns", [])
+            rows = results_info.get("results", [])
+
             # If no columns provided, try to extract from results
             if not columns and results:
                 # Assume first row contains column info or is data
@@ -559,31 +552,27 @@ async def get_query_results(
 
             return QueryResultsResponse(
                 job_id=job_id,
-                status=results_info['status'],
+                status=results_info["status"],
                 columns=columns,
                 rows=rows,
                 offset=offset,
                 limit=limit,
                 returned_rows=len(rows),
-                total_rows=results_info.get('total_rows'),
-                result_metadata={
-                    "query_execution_completed": True
-                }
+                total_rows=results_info.get("total_rows"),
+                result_metadata={"query_execution_completed": True},
             )
         else:
             # Job not completed yet
             return QueryResultsResponse(
                 job_id=job_id,
-                status=results_info['status'],
+                status=results_info["status"],
                 columns=None,
                 rows=None,
                 offset=offset,
                 limit=limit,
                 returned_rows=0,
                 total_rows=None,
-                result_metadata={
-                    "query_execution_completed": False
-                }
+                result_metadata={"query_execution_completed": False},
             )
 
     except XGTConnectionError as e:
@@ -593,8 +582,8 @@ async def get_query_results(
             detail={
                 "error": "XGT_CONNECTION_ERROR",
                 "message": "Cannot connect to XGT server",
-                "details": str(e)
-            }
+                "details": str(e),
+            },
         )
     except XGTOperationError as e:
         logger.error(f"XGT operation failed: {e}")
@@ -605,8 +594,8 @@ async def get_query_results(
                 detail={
                     "error": "JOB_NOT_FOUND",
                     "message": f"Query job {job_id} not found",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
         else:
             raise HTTPException(
@@ -614,8 +603,8 @@ async def get_query_results(
                 detail={
                     "error": "XGT_OPERATION_ERROR",
                     "message": "Failed to get query results",
-                    "details": str(e)
-                }
+                    "details": str(e),
+                },
             )
     except Exception as e:
         logger.error(f"Unexpected error getting query results: {e}")
@@ -624,6 +613,6 @@ async def get_query_results(
             detail={
                 "error": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",
-                "details": str(e) if get_settings().DEBUG else "Internal server error"
-            }
+                "details": str(e) if get_settings().DEBUG else "Internal server error",
+            },
         )

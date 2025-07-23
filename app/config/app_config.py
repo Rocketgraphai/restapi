@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = "RocketGraph Public API"
     APP_VERSION: str = "1.0.0"
-    ENVIRONMENT: str = Field(default="development", description="Environment: development, staging, production")
+    ENVIRONMENT: str = Field(
+        default="development", description="Environment: development, staging, production"
+    )
     DEBUG: bool = Field(default=False, description="Enable debug mode")
 
     # Server Settings
@@ -26,8 +28,13 @@ class Settings(BaseSettings):
     WORKERS: int = Field(default=4, description="Number of worker processes")
 
     # Security Settings
-    SECRET_KEY: str = Field(default="dev-secret-key-change-in-production", description="Secret key for cryptographic operations")
-    API_KEY_SALT: str = Field(default="dev-api-key-salt-change-in-production", description="Salt for API key hashing")
+    SECRET_KEY: str = Field(
+        default="dev-secret-key-change-in-production",
+        description="Secret key for cryptographic operations",
+    )
+    API_KEY_SALT: str = Field(
+        default="dev-api-key-salt-change-in-production", description="Salt for API key hashing"
+    )
     ALLOWED_HOSTS: list[str] = Field(default=["*"], description="Allowed host headers")
     CORS_ORIGINS: list[str] = Field(default=[], description="Allowed CORS origins")
 
@@ -41,7 +48,9 @@ class Settings(BaseSettings):
     XGT_SERVER_CN: Optional[str] = Field(default=None, description="XGT server common name")
 
     # MongoDB Settings (for API metadata)
-    MONGODB_URI: str = Field(default="mongodb://localhost:27017/rocketgraph_api", description="MongoDB connection URI")
+    MONGODB_URI: str = Field(
+        default="mongodb://localhost:27017/rocketgraph_api", description="MongoDB connection URI"
+    )
     MONGODB_DATABASE: str = Field(default="rocketgraph_api", description="MongoDB database name")
 
     # Redis Settings (for caching and rate limiting)
@@ -50,22 +59,37 @@ class Settings(BaseSettings):
 
     # Rate Limiting Settings
     RATE_LIMITING_ENABLED: bool = Field(default=True, description="Enable rate limiting")
-    DEFAULT_RATE_LIMIT_PER_MINUTE: int = Field(default=100, description="Default requests per minute")
+    DEFAULT_RATE_LIMIT_PER_MINUTE: int = Field(
+        default=100, description="Default requests per minute"
+    )
     DEFAULT_RATE_LIMIT_PER_HOUR: int = Field(default=1000, description="Default requests per hour")
     DEFAULT_RATE_LIMIT_PER_DAY: int = Field(default=10000, description="Default requests per day")
 
     # XGT Pass-through Authentication Settings
-    JWT_SECRET_KEY: str = Field(default="dev-jwt-secret-key-change-in-production", description="JWT secret key for XGT credential encryption")
+    JWT_SECRET_KEY: str = Field(
+        default="dev-jwt-secret-key-change-in-production",
+        description="JWT secret key for XGT credential encryption",
+    )
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
-    JWT_EXPIRY_SECONDS: int = Field(default=3600, description="JWT token expiry in seconds (1 hour)")
-    
+    JWT_EXPIRY_SECONDS: int = Field(
+        default=3600, description="JWT token expiry in seconds (1 hour)"
+    )
+
     # XGT Authentication Types Enabled
-    XGT_BASIC_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT Basic Auth (username/password)")
-    XGT_PKI_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT PKI certificate authentication")
-    XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(default=False, description="Enable XGT Proxy PKI authentication")
+    XGT_BASIC_AUTH_ENABLED: bool = Field(
+        default=True, description="Enable XGT Basic Auth (username/password)"
+    )
+    XGT_PKI_AUTH_ENABLED: bool = Field(
+        default=True, description="Enable XGT PKI certificate authentication"
+    )
+    XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(
+        default=False, description="Enable XGT Proxy PKI authentication"
+    )
 
     # LLM Settings
-    LLM_PROVIDERS: list[str] = Field(default=["openai", "anthropic"], description="Available LLM providers")
+    LLM_PROVIDERS: list[str] = Field(
+        default=["openai", "anthropic"], description="Available LLM providers"
+    )
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key")
     ANTHROPIC_API_KEY: Optional[str] = Field(default=None, description="Anthropic API key")
 
@@ -80,50 +104,56 @@ class Settings(BaseSettings):
     # Security Headers
     SECURITY_HEADERS_ENABLED: bool = Field(default=True, description="Enable security headers")
 
-    @field_validator('ENVIRONMENT')
+    @field_validator("ENVIRONMENT")
     @classmethod
     def validate_environment(cls, v):
         """Validate environment value."""
-        allowed = ['development', 'staging', 'production']
+        allowed = ["development", "staging", "production"]
         if v.lower() not in allowed:
             raise ValueError(f"Environment must be one of: {allowed}")
         return v.lower()
 
-    @field_validator('LOG_LEVEL')
+    @field_validator("LOG_LEVEL")
     @classmethod
     def validate_log_level(cls, v):
         """Validate log level."""
-        allowed = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in allowed:
             raise ValueError(f"Log level must be one of: {allowed}")
         return v.upper()
 
-    @field_validator('CORS_ORIGINS', mode='before')
+    @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
         """Parse CORS origins from string or list."""
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(',') if origin.strip()]
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
-    @field_validator('ALLOWED_HOSTS', mode='before')
+    @field_validator("ALLOWED_HOSTS", mode="before")
     @classmethod
     def parse_allowed_hosts(cls, v):
         """Parse allowed hosts from string or list."""
         if isinstance(v, str):
-            return [host.strip() for host in v.split(',') if host.strip()]
+            return [host.strip() for host in v.split(",") if host.strip()]
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_production_security(self):
         """Validate security settings in production."""
-        if self.ENVIRONMENT == 'production':
-            if self.SECRET_KEY.startswith('dev-'):
-                raise ValueError("Production environment requires a secure SECRET_KEY (not dev default)")
-            if self.API_KEY_SALT.startswith('dev-'):
-                raise ValueError("Production environment requires a secure API_KEY_SALT (not dev default)")
-            if self.JWT_SECRET_KEY.startswith('dev-'):
-                raise ValueError("Production environment requires a secure JWT_SECRET_KEY (not dev default)")
+        if self.ENVIRONMENT == "production":
+            if self.SECRET_KEY.startswith("dev-"):
+                raise ValueError(
+                    "Production environment requires a secure SECRET_KEY (not dev default)"
+                )
+            if self.API_KEY_SALT.startswith("dev-"):
+                raise ValueError(
+                    "Production environment requires a secure API_KEY_SALT (not dev default)"
+                )
+            if self.JWT_SECRET_KEY.startswith("dev-"):
+                raise ValueError(
+                    "Production environment requires a secure JWT_SECRET_KEY (not dev default)"
+                )
         return self
 
     @property
@@ -136,11 +166,7 @@ class Settings(BaseSettings):
         """Check if running in development."""
         return self.ENVIRONMENT == "development"
 
-    model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True
-    )
+    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 
 # Global settings instance
@@ -174,34 +200,34 @@ def reload_settings() -> Settings:
 
 # Rate limiting configurations
 RATE_LIMIT_TIERS = {
-    'free': {
-        'requests_per_minute': 100,
-        'requests_per_hour': 1000,
-        'requests_per_day': 10000,
-        'query_executions_per_hour': 100,
-        'data_upload_per_day': 100 * 1024 * 1024  # 100MB
+    "free": {
+        "requests_per_minute": 100,
+        "requests_per_hour": 1000,
+        "requests_per_day": 10000,
+        "query_executions_per_hour": 100,
+        "data_upload_per_day": 100 * 1024 * 1024,  # 100MB
     },
-    'basic': {
-        'requests_per_minute': 500,
-        'requests_per_hour': 10000,
-        'requests_per_day': 100000,
-        'query_executions_per_hour': 1000,
-        'data_upload_per_day': 1024 * 1024 * 1024  # 1GB
+    "basic": {
+        "requests_per_minute": 500,
+        "requests_per_hour": 10000,
+        "requests_per_day": 100000,
+        "query_executions_per_hour": 1000,
+        "data_upload_per_day": 1024 * 1024 * 1024,  # 1GB
     },
-    'premium': {
-        'requests_per_minute': 1000,
-        'requests_per_hour': 50000,
-        'requests_per_day': 1000000,
-        'query_executions_per_hour': 10000,
-        'data_upload_per_day': 10 * 1024 * 1024 * 1024  # 10GB
+    "premium": {
+        "requests_per_minute": 1000,
+        "requests_per_hour": 50000,
+        "requests_per_day": 1000000,
+        "query_executions_per_hour": 10000,
+        "data_upload_per_day": 10 * 1024 * 1024 * 1024,  # 10GB
     },
-    'enterprise': {
-        'requests_per_minute': 5000,
-        'requests_per_hour': 200000,
-        'requests_per_day': 10000000,
-        'query_executions_per_hour': 100000,
-        'data_upload_per_day': 100 * 1024 * 1024 * 1024  # 100GB
-    }
+    "enterprise": {
+        "requests_per_minute": 5000,
+        "requests_per_hour": 200000,
+        "requests_per_day": 10000000,
+        "query_executions_per_hour": 100000,
+        "data_upload_per_day": 100 * 1024 * 1024 * 1024,  # 100GB
+    },
 }
 
 
@@ -215,4 +241,4 @@ def get_rate_limits(tier: str) -> dict:
     Returns:
         Rate limit configuration
     """
-    return RATE_LIMIT_TIERS.get(tier, RATE_LIMIT_TIERS['free'])
+    return RATE_LIMIT_TIERS.get(tier, RATE_LIMIT_TIERS["free"])
