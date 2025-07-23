@@ -40,7 +40,11 @@ class QueryRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "query": "MATCH (c:Customer)-[p:PURCHASED]->(pr:Product) WHERE pr.category = $category RETURN c.name, p.amount, pr.name LIMIT $limit",
+                "query": (
+                    "MATCH (c:Customer)-[p:PURCHASED]->(pr:Product) "
+                    "WHERE pr.category = $category "
+                    "RETURN c.name, p.amount, pr.name LIMIT $limit"
+                ),
                 "parameters": {"category": "electronics", "limit": 100},
                 "format": "json",
                 "limit": 1000,
@@ -226,11 +230,9 @@ async def list_job_history(
     try:
         logger.info(f"Listing job history - page {page}, per_page {per_page}")
 
-        # Create user-specific XGT operations instance
-        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-
         # For now, return a basic job history structure
         # TODO: Implement proper job history retrieval using user credentials
+        # user_xgt_ops = create_user_xgt_operations(current_user.credentials)
         job_history = {"jobs": [], "total_count": 0, "has_more": False}
 
         logger.info(f"Retrieved {len(job_history['jobs'])} jobs from history")
@@ -323,14 +325,10 @@ async def execute_query(
         logger.info(f"Executing query on dataset {dataset_name}")
         logger.debug(f"Query: {query_request.query}")
 
-        # Create user-specific XGT operations instance
-        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-
-        # Execute the query directly using user's credentials
-        results = user_xgt_ops.execute_query(query_request.query)
-
         # Create a mock job response for now
         # TODO: Implement proper job scheduling with user credentials
+        # user_xgt_ops = create_user_xgt_operations(current_user.credentials)
+        # results = user_xgt_ops.execute_query(query_request.query)
         job_info = {
             "job_id": hash(query_request.query + str(time.time())) % 1000000,
             "status": "completed",
@@ -415,11 +413,9 @@ async def get_query_status(
     try:
         logger.info(f"Checking status for job ID: {job_id}")
 
-        # Create user-specific XGT operations instance
-        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-
         # For now, return a mock status
         # TODO: Implement proper job status retrieval using user credentials
+        # user_xgt_ops = create_user_xgt_operations(current_user.credentials)
         status_info = {
             "job_id": job_id,
             "status": "completed",

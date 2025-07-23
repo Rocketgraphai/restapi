@@ -99,11 +99,13 @@ async def health_check():
 
             if protocol_compatible:
                 services["xgt"] = (
-                    f"healthy (server:v{server_version} protocol:{server_protocol}, sdk:v{sdk_version} client_protocol:{client_protocol})"
+                    f"healthy (server:v{server_version} protocol:{server_protocol}, "
+                    f"sdk:v{sdk_version} client_protocol:{client_protocol})"
                 )
             else:
                 services["xgt"] = (
-                    f"degraded: protocol incompatible (server:{server_protocol} < client:{client_protocol})"
+                    f"degraded: protocol incompatible "
+                    f"(server:{server_protocol} < client:{client_protocol})"
                 )
                 overall_status = "degraded"
         else:
@@ -227,7 +229,9 @@ async def version_info():
             "connection_status": "disconnected",
         },
         "system": {
-            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "python_version": (
+                f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            ),
             "platform": sys.platform,
         },
     }

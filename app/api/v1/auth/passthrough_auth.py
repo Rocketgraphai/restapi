@@ -413,7 +413,7 @@ async def test_xgt_connection(
         try:
             if hasattr(connection, "close"):
                 connection.close()
-        except:
+        except Exception:
             pass  # Ignore close errors
 
         return XGTConnectionTest(

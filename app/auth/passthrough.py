@@ -11,10 +11,19 @@ import hashlib
 import logging
 import os
 import tempfile
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 from cachetools import TTLCache
 from cryptography.fernet import Fernet
+
+from ..config.app_config import get_settings
+from ..utils.exceptions import XGTConnectionError, XGTOperationError
+from .passthrough_models import (
+    XGTAuthType,
+    XGTBasicAuthRequest,
+    XGTPKIAuthRequest,
+    XGTProxyPKIAuthRequest,
+)
 
 # Dynamic JWT import to avoid conflicts
 JWT_AVAILABLE = False
@@ -34,16 +43,6 @@ def _get_jwt_module():
             JWT_AVAILABLE = False
             pyjwt = None
     return pyjwt
-
-
-from ..config.app_config import get_settings
-from ..utils.exceptions import XGTConnectionError, XGTOperationError
-from .passthrough_models import (
-    XGTAuthType,
-    XGTBasicAuthRequest,
-    XGTPKIAuthRequest,
-    XGTProxyPKIAuthRequest,
-)
 
 # XGT imports
 try:
@@ -115,7 +114,7 @@ class PassthroughAuthService:
 
     def authenticate_xgt_user(
         self, auth_request: Union[XGTBasicAuthRequest, XGTPKIAuthRequest, XGTProxyPKIAuthRequest]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Authenticate user by testing XGT connection with their credentials.
 
@@ -164,7 +163,7 @@ class PassthroughAuthService:
                             connection.close()
                         elif hasattr(connection, "__del__"):
                             del connection
-                    except:
+                    except Exception:
                         pass  # Ignore close errors
 
             # Create encrypted credentials
@@ -297,7 +296,7 @@ class PassthroughAuthService:
 
         return auth_obj, auth_request.user_id, auth_data
 
-    def _get_connection_flags(self, auth_request) -> Dict[str, Any]:
+    def _get_connection_flags(self, auth_request) -> dict[str, Any]:
         """Get connection flags based on auth type."""
         flags = {}
 
@@ -354,7 +353,7 @@ class PassthroughAuthService:
         logger.warning("Proxy PKI signature validation not implemented - accepting all requests")
         return True
 
-    def validate_jwt_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def validate_jwt_token(self, token: str) -> Optional[dict[str, Any]]:
         """
         Validate JWT token and extract XGT credentials.
 
@@ -421,7 +420,7 @@ class PassthroughAuthService:
                 logger.error(f"Token validation error: {e}")
                 return None
 
-    def _get_xgt_user_info(self, connection, username: str) -> Dict[str, Any]:
+    def _get_xgt_user_info(self, connection, username: str) -> dict[str, Any]:
         """Get user information from XGT connection."""
         try:
             # Get default namespace (usually matches username)
@@ -482,11 +481,11 @@ class PassthroughAuthService:
                         connection.close()
                     elif hasattr(connection, "__del__"):
                         del connection
-                except:
+                except Exception:
                     pass  # Ignore close errors
 
     def _generate_jwt_token(
-        self, username: str, credentials: XGTCredentials, user_info: Dict[str, Any]
+        self, username: str, credentials: XGTCredentials, user_info: dict[str, Any]
     ) -> str:
         """Generate JWT token with encrypted XGT credentials."""
         # Get JWT module dynamically

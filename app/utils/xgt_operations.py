@@ -17,6 +17,12 @@ import re
 import time
 from typing import Optional
 
+from ..config.app_config import get_settings
+from .exceptions import (
+    XGTConnectionError,
+    XGTOperationError,
+)
+
 # XGT imports (will need to be installed)
 try:
     import xgt
@@ -38,12 +44,6 @@ except ImportError:
 #     # Handle gracefully - these are only needed for some operations
 #     print(f"Warning: XGT connector not available - {e}")
 XGT_CONNECTOR_AVAILABLE = False
-
-from ..config.app_config import get_settings
-from .exceptions import (
-    XGTConnectionError,
-    XGTOperationError,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ class XGTOperations:
             if conn:
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass  # Ignore errors on close
 
     def _fix_name(self, name: str, fully_qualified: bool, default_namespace: str) -> str:
@@ -979,7 +979,7 @@ class XGTOperations:
                                                         if table_data
                                                         else []
                                                     )
-                                            except:
+                                            except Exception:
                                                 columns = (
                                                     [f"col_{i}" for i in range(len(table_data[0]))]
                                                     if table_data

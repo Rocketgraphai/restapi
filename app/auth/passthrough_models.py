@@ -6,7 +6,7 @@ managing user groups and labels in the REST API.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -90,8 +90,6 @@ class XGTProxyPKIAuthRequest(BaseModel):
 
 
 # Union type for all authentication requests
-from typing import Union
-
 XGTAuthRequest = Union[XGTBasicAuthRequest, XGTPKIAuthRequest, XGTProxyPKIAuthRequest]
 
 

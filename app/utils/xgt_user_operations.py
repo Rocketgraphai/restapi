@@ -7,7 +7,7 @@ that use each authenticated user's own XGT credentials.
 
 from contextlib import contextmanager
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..config.app_config import get_settings
 from ..utils.exceptions import XGTConnectionError, XGTOperationError
@@ -92,7 +92,7 @@ class UserXGTOperations:
             logger.error(f"Failed to create user XGT connection: {e}")
             raise XGTConnectionError(f"User connection failed: {str(e)}")
 
-    def _get_basic_auth_flags(self) -> Dict[str, Any]:
+    def _get_basic_auth_flags(self) -> dict[str, Any]:
         """Get connection flags for basic auth."""
         flags = {}
         if self.settings.XGT_USE_SSL:
@@ -103,7 +103,7 @@ class UserXGTOperations:
             }
         return flags
 
-    def _get_pki_auth_flags(self) -> Dict[str, Any]:
+    def _get_pki_auth_flags(self) -> dict[str, Any]:
         """Get connection flags for PKI auth."""
         flags = {"ssl": True}  # PKI always requires SSL
 
@@ -115,7 +115,7 @@ class UserXGTOperations:
 
         return flags
 
-    def _get_proxy_pki_auth_flags(self) -> Dict[str, Any]:
+    def _get_proxy_pki_auth_flags(self) -> dict[str, Any]:
         """Get connection flags for proxy PKI auth."""
         return {"ssl": True}  # Proxy PKI always requires SSL
 
@@ -176,7 +176,7 @@ class UserXGTOperations:
                 try:
                     if hasattr(conn, "close"):
                         conn.close()
-                except:
+                except Exception:
                     pass  # Ignore errors on close
 
     def execute_query(self, query: str, parameters: dict = None) -> list:
@@ -461,7 +461,7 @@ class UserXGTOperations:
             logger.warning(f"Could not determine primary key: {e}")
             return None
 
-    def get_frame_data(self, frame_name: str, offset: int = 0, limit: int = 100) -> Dict[str, Any]:
+    def get_frame_data(self, frame_name: str, offset: int = 0, limit: int = 100) -> dict[str, Any]:
         """
         Get data from a specific frame.
 
@@ -566,7 +566,7 @@ class UserXGTOperations:
 
     def get_schema(
         self, dataset_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get schema information for a dataset.
 

@@ -63,6 +63,15 @@ ignore = [
     "S608",  # Possible SQL injection via string formatting
     "B008",  # Function call in argument default
     "B904",  # Exception chaining - project doesn't use from clause
+    # False positives and style-only issues (two-tier approach)
+    "S106",  # Hardcoded password (false positive for OAuth2 "bearer" token type)
+    "S110",  # Try-except-pass (legitimate for connection cleanup)
+    "N805",  # Invalid first argument name for method (style preference)
+    "N818",  # Error suffix on exception name (style preference)
+    "SIM102", # Collapsible if (style preference)
+    "SIM105", # Suppressible exception (style preference)
+    "SIM108", # If-else block instead of if-exp (style preference)
+    "C401",  # Unnecessary generator set (minor optimization)
 ]
 
 [tool.ruff.lint.per-file-ignores]

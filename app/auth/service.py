@@ -6,7 +6,7 @@ Handles User -> Group -> Label resolution and JWT token management.
 
 from datetime import datetime, timedelta
 import logging
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional
 
 from cachetools import TTLCache
 import jwt as pyjwt
@@ -14,7 +14,7 @@ import jwt as pyjwt
 from ..config.app_config import get_settings
 from ..utils.exceptions import XGTOperationError
 from ..utils.xgt_operations import create_xgt_operations
-from .models import AuthenticatedUser, AuthenticationResponse, UserGroup
+from .models import AuthenticatedUser, AuthenticationResponse, FrameACL, UserGroup
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class AuthenticationService:
             logger.error(f"Token validation error: {e}")
             return None
 
-    def _authenticate_with_xgt(self, xgt_ops, username: str, password: str) -> Dict[str, Any]:
+    def _authenticate_with_xgt(self, xgt_ops, username: str, password: str) -> dict[str, Any]:
         """Authenticate user against XGT server."""
         try:
             # Query XGT for user authentication
@@ -198,7 +198,7 @@ class AuthenticationService:
             logger.error(f"Error getting user groups: {e}")
             return []
 
-    def _resolve_user_labels(self, xgt_ops, user_groups: list[UserGroup]) -> Set[str]:
+    def _resolve_user_labels(self, xgt_ops, user_groups: list[UserGroup]) -> set[str]:
         """Resolve security labels from user's groups."""
         all_labels = set()
 
@@ -216,7 +216,7 @@ class AuthenticationService:
 
         return all_labels
 
-    def _get_group_labels(self, xgt_ops, group_id: str) -> Set[str]:
+    def _get_group_labels(self, xgt_ops, group_id: str) -> set[str]:
         """Get security labels for a specific group."""
         try:
             # Query XGT for group's labels
@@ -288,12 +288,12 @@ class AuthenticationService:
         return token
 
     def check_frame_permission(
-        self, user: AuthenticatedUser, frame_acl: "FrameACL", operation: str
+        self, user: AuthenticatedUser, frame_acl: FrameACL, operation: str
     ) -> bool:
         """Check if user has permission for a frame operation."""
         return frame_acl.check_permission(operation, user.labels)
 
-    def get_user_labels(self, user_id: str) -> Set[str]:
+    def get_user_labels(self, user_id: str) -> set[str]:
         """Get cached labels for a user."""
         return self._label_cache.get(user_id, set())
 
