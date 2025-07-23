@@ -311,16 +311,17 @@ async def execute_query(
         logger.info(f"Executing query on dataset {dataset_name}")
         logger.debug(f"Query: {query_request.query}")
 
-        # Create a mock job response for now
-        # TODO: Implement proper job scheduling with user credentials
-        # user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-        # results = user_xgt_ops.execute_query(query_request.query)
+        # Execute query using user's XGT operations
+        user_xgt_ops = create_user_xgt_operations(current_user.credentials)
+        results = user_xgt_ops.execute_query(query_request.query)
+        
         job_info = {
             "job_id": hash(query_request.query + str(time.time())) % 1000000,
             "status": "completed",
             "query": query_request.query,
             "dataset_name": dataset_name,
             "submitted_at": time.time(),
+            "results": results,
         }
 
         logger.info(f"Query scheduled with job ID: {job_info['job_id']}")
