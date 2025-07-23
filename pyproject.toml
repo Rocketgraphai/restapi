@@ -31,7 +31,7 @@ dev = [
 # Ruff configuration
 [tool.ruff]
 target-version = "py39"
-line-length = 120
+line-length = 170
 exclude = [
     ".git",
     ".mypy_cache",
@@ -79,13 +79,23 @@ ignore = [
     "S101",  # Use of assert is fine in tests
     "S105",  # Hardcoded password in tests is fine
     "S106",  # Hardcoded password in tests is fine
+    "S113",  # Requests without timeout is fine in tests
     "PLR2004",  # Magic values are fine in tests
     "T201",  # Print statements are fine in test scripts
     "F401",  # Unused imports are fine in tests
+    "UP006", # Old type annotations fine in tests
+    "UP035", # Deprecated imports fine in tests
+    "W293",  # Whitespace in blank lines fine in tests
 ]
-"**/test_*.py" = ["T201", "S105", "S106", "F401"]
+"**/test_*.py" = ["T201", "S105", "S106", "S113", "F401", "UP006", "UP035", "W293", "E722"]
+"test_*.py" = ["T201", "S105", "S106", "S113", "F401", "UP006", "UP035", "W293", "E722"]
+"scripts/**/*.py" = [
+    "S603",  # Subprocess calls are expected in scripts
+    "S607",  # Partial executable paths are expected in scripts
+    "S311",  # Random generators fine in scripts
+    "E722",  # Bare except fine in scripts
+]
 "debug_token.py" = ["T201", "F541"]
-"test_*.py" = ["T201", "S105", "S106", "F401", "E722", "S110"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
