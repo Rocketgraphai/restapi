@@ -26,17 +26,17 @@ curl -X POST "https://api.rocketgraph.com/api/v1/auth/xgt/basic" \
 
 Save the `access_token` for subsequent requests.
 
-## 2. Explore Available Datasets
+## 2. Explore Available Graphs
 
 ```bash
-curl -X GET "https://api.rocketgraph.com/api/v1/public/datasets" \
+curl -X GET "https://api.rocketgraph.com/api/v1/public/graphs" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## 3. Execute a Query
 
 ```bash
-curl -X POST "https://api.rocketgraph.com/api/v1/public/datasets/your-dataset/query" \
+curl -X POST "https://api.rocketgraph.com/api/v1/public/graphs/your-graph/query" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -75,15 +75,15 @@ token = auth_response.json()["access_token"]
 
 headers = {"Authorization": f"Bearer {token}"}
 
-# 2. List datasets
-datasets = requests.get(
-    "https://api.rocketgraph.com/api/v1/public/datasets",
+# 2. List graphs
+graphs = requests.get(
+    "https://api.rocketgraph.com/api/v1/public/graphs",
     headers=headers
 ).json()
 
 # 3. Execute query
 query_job = requests.post(
-    "https://api.rocketgraph.com/api/v1/public/datasets/your-dataset/query",
+    "https://api.rocketgraph.com/api/v1/public/graphs/your-graph/query",
     json={"query": "MATCH (n) RETURN n LIMIT 5", "format": "json"},
     headers=headers
 ).json()
@@ -117,12 +117,12 @@ async function quickStart() {
   const token = authResponse.data.access_token;
   api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   
-  // 2. List datasets
-  const datasets = await api.get('/public/datasets');
-  console.log(`Found ${datasets.data.total_count} datasets`);
+  // 2. List graphs
+  const graphs = await api.get('/public/graphs');
+  console.log(`Found ${graphs.data.total_count} graphs`);
   
   // 3. Execute query
-  const queryJob = await api.post('/public/datasets/your-dataset/query', {
+  const queryJob = await api.post('/public/graphs/your-graph/query', {
     query: 'MATCH (n) RETURN n LIMIT 5',
     format: 'json'
   });
@@ -140,8 +140,8 @@ quickStart().catch(console.error);
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/auth/xgt/basic` | POST | Authenticate with username/password |
-| `/public/datasets` | GET | List available datasets |
-| `/public/datasets/{name}/query` | POST | Execute Cypher query |
+| `/public/graphs` | GET | List available graphs |
+| `/public/graphs/{name}/query` | POST | Execute Cypher query |
 | `/public/query/{job_id}/results` | GET | Get query results |
 | `/public/frames` | GET | List all frames |
 | `/public/frames/{name}/data` | GET | Get frame data |

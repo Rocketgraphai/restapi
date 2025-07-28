@@ -93,14 +93,14 @@ ACTIVE_API_KEYS = Gauge(
 QUERY_EXECUTION_TIME = Histogram(
     'rg_query_execution_duration_seconds',
     'Graph query execution time',
-    ['dataset_id', 'query_complexity'],
+    ['graph_id', 'query_complexity'],
     buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0)
 )
 
 QUERY_RESULT_SIZE = Histogram(
     'rg_query_result_size_rows',
     'Number of rows in query results',
-    ['dataset_id'],
+    ['graph_id'],
     buckets=(1, 10, 100, 1000, 10000, 100000, 1000000)
 )
 
@@ -186,16 +186,16 @@ class MetricsCollector:
     def __init__(self):
         self.start_time = time.time()
     
-    def record_query_execution(self, dataset_id: str, execution_time: float, 
+    def record_query_execution(self, graph_id: str, execution_time: float, 
                              result_count: int, complexity: str):
         """Record query execution metrics"""
         QUERY_EXECUTION_TIME.labels(
-            dataset_id=dataset_id,
+            graph_id=graph_id,
             query_complexity=complexity
         ).observe(execution_time)
         
         QUERY_RESULT_SIZE.labels(
-            dataset_id=dataset_id
+            graph_id=graph_id
         ).observe(result_count)
     
     def record_authentication(self, success: bool, auth_type: str):
@@ -357,11 +357,11 @@ class TracingMiddleware:
             if hasattr(g, 'api_key_id'):
                 span.set_attribute("rg.api_key_id", g.api_key_id)
     
-    def trace_query_execution(self, query: str, dataset_id: str):
+    def trace_query_execution(self, query: str, graph_id: str):
         """Trace graph query execution"""
         
         with self.tracer.start_as_current_span("query_execution") as span:
-            span.set_attribute("rg.query.dataset_id", dataset_id)
+            span.set_attribute("rg.query.graph_id", graph_id)
             span.set_attribute("rg.query.length", len(query))
             span.set_attribute("rg.query.hash", hashlib.md5(query.encode()).hexdigest())
             
@@ -503,7 +503,7 @@ class AuditLogger:
         
         self.store_audit_event(event)
     
-    def log_data_access(self, dataset_ids: List[str], query: str, 
+    def log_data_access(self, graph_ids: List[str], query: str, 
                        result_count: int, auth_context, pii_detected: bool = False):
         """Log data access events for compliance"""
         
@@ -512,11 +512,11 @@ class AuditLogger:
             compliance_tags.extend(['pii', 'gdpr', 'ccpa'])
         
         data_accessed = {
-            'dataset_ids': dataset_ids,
+            'graph_ids': graph_ids,
             'query_hash': hashlib.sha256(query.encode()).hexdigest(),
             'result_count': result_count,
             'pii_detected': pii_detected,
-            'data_classification': self.classify_datasets(dataset_ids)
+            'data_classification': self.classify_graphs(graph_ids)
         }
         
         event = AuditEvent(

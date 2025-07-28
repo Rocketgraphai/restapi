@@ -531,7 +531,7 @@ data:
 - **CPU**: 8+ vCPUs (depending on workload)
 - **Memory**: 32+ GB RAM
 - **Storage**: 500+ GB NVMe SSD
-- **Network**: 10 Gbps for large datasets
+- **Network**: 10 Gbps for large graphs
 
 ### Scaling Guidelines
 
@@ -567,7 +567,7 @@ scaling_behavior:
 **Database Scaling Strategy:**
 - **MongoDB**: Replica sets with read replicas
 - **Redis**: Cluster mode for horizontal scaling
-- **XGT**: Distributed cluster setup for large datasets
+- **XGT**: Distributed cluster setup for large graphs
 
 ## Monitoring & Observability
 
@@ -621,7 +621,7 @@ REQUEST_DURATION = Histogram(
 QUERY_EXECUTION_TIME = Histogram(
     'rocketgraph_query_execution_seconds',
     'Query execution time',
-    ['dataset_id', 'query_type']
+    ['graph_id', 'query_type']
 )
 
 ACTIVE_QUERIES = Gauge(

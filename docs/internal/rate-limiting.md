@@ -433,7 +433,7 @@ def rate_limit(limit_type: RateLimitType, custom_limit: Optional[int] = None):
     return decorator
 
 # Usage example
-@app.route('/api/v1/public/datasets/{id}/query', methods=['POST'])
+@app.route('/api/v1/public/graphs/{id}/query', methods=['POST'])
 @rate_limit(RateLimitType.QUERY_EXECUTIONS_PER_HOUR, custom_limit=100)
 def execute_query(id):
     # Query execution logic
