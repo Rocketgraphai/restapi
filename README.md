@@ -1,6 +1,6 @@
 # RocketGraph Public API
 
-A secure, scalable REST API for graph database operations using XGT. Provides multi-tenant access to graph analytics capabilities with enterprise-grade security and monitoring.
+A secure, scalable REST API for graph database operations using XGT. Provides multi-tenant access to graph analytics capabilities with enterprise-grade security, monitoring, and Claude AI integration via MCP (Model Context Protocol).
 
 ## Overview
 
@@ -11,6 +11,7 @@ The RocketGraph Public API is designed as a separate service from the desktop ap
 - **Enterprise Security** - Rate limiting, audit logging, and comprehensive monitoring
 - **Graph Database Operations** - Full access to XGT graph database functionality
 - **RESTful Design** - Standard HTTP methods with JSON payloads
+- **Claude AI Integration** - Direct Claude access via MCP for intelligent graph analysis
 
 ## Quick Start
 
@@ -321,6 +322,64 @@ curl -H "Authorization: Bearer rg_live_your_api_key_here" \
 - **Encryption** - All data encrypted in transit and at rest
 - **Network security** - WAF, DDoS protection, geographic restrictions
 
+## Claude AI Integration via MCP
+
+Connect Claude directly to your graph database for intelligent analysis:
+
+### Quick Setup
+
+```bash
+# Start with MCP support (default hybrid mode)
+python main.py --hybrid
+
+# Or MCP-only mode for Claude
+python main.py --mcp-only
+```
+
+### Claude Desktop Configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "rocketgraph": {
+      "command": "python",
+      "args": ["/path/to/restapi/main.py", "--mcp-only"],
+      "env": {
+        "PYTHONPATH": "/path/to/restapi",
+        "XGT_HOST": "your-xgt-server.com",
+        "MCP_ENABLED": "true"
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+- **rocketgraph_authenticate** - Authenticate with XGT
+- **rocketgraph_query** - Execute Cypher queries  
+- **rocketgraph_schema** - Get graph schemas
+- **rocketgraph_list_graphs** - List available graphs
+- **rocketgraph_frame_data** - Get sample data
+
+### Documentation
+
+- **[MCP Setup Guide](MCP_CLAUDE_SETUP.md)** - Complete setup instructions
+- **[Quick Reference](MCP_QUICK_REFERENCE.md)** - Commands and troubleshooting
+- **[Usage Examples](examples/claude_usage_examples.md)** - Real Claude conversation examples
+- **[Test Connection](examples/test_mcp_connection.py)** - Test script to verify setup
+
+### Example Usage
+
+Once configured, ask Claude:
+```
+"Please connect to RocketGraph and show me the top customers by transaction volume"
+```
+
+Claude will authenticate, query your graph database, and provide intelligent analysis.
+
 ## Monitoring
 
 ### Health Checks
@@ -337,6 +396,7 @@ Prometheus metrics available at `:9090/metrics` (configurable):
 - Error rates by endpoint
 - Rate limiting violations  
 - Business metrics (queries, graphs, etc.)
+- MCP session metrics and usage
 
 ## Contributing
 

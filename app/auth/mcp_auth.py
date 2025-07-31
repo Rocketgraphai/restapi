@@ -100,7 +100,34 @@ class MCPAuthService:
                 raise XGTOperationError(f"Unsupported auth method: {auth_method}")
             
             # Use existing passthrough authentication
-            authenticated_user = await self.passthrough_auth.authenticate_user(auth_request)
+            auth_result = self.passthrough_auth.authenticate_xgt_user(auth_request)
+            
+            # Convert to AuthenticatedXGTUser format expected by MCP
+            from .passthrough_models import AuthenticatedXGTUser
+            
+            # Extract information from auth_result
+            jwt_token = auth_result.get("access_token")
+            user_info = auth_result.get("user_info", {})
+            
+            # Decode JWT token to get credentials
+            validated_token = self.passthrough_auth.validate_jwt_token(jwt_token)
+            if not validated_token:
+                raise XGTOperationError("Failed to validate generated token")
+            
+            # Extract already-decrypted credentials from validated token
+            credentials = validated_token.get("credentials")
+            if not credentials:
+                raise XGTOperationError("No credentials found in token")
+            
+            # Create AuthenticatedXGTUser with proper timestamps
+            import time
+            authenticated_user = AuthenticatedXGTUser(
+                username=user_info.get("username", username),
+                namespace=user_info.get("namespace"),
+                authenticated_at=validated_token.get("authenticated_at", time.time()),
+                expires_at=validated_token.get("expires_at", time.time() + 3600),
+                credentials=credentials
+            )
             
             logger.info(f"MCP user {username} authenticated successfully")
             return authenticated_user
