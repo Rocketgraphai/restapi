@@ -70,6 +70,14 @@ class Settings(BaseSettings):
     XGT_PKI_AUTH_ENABLED: bool = Field(default=True, description="Enable XGT PKI certificate authentication")
     XGT_PROXY_PKI_AUTH_ENABLED: bool = Field(default=False, description="Enable XGT Proxy PKI authentication")
 
+    # MCP Settings
+    MCP_ENABLED: bool = Field(default=True, description="Enable MCP server functionality")
+    MCP_STDIO_MODE: bool = Field(default=True, description="Run MCP in stdio mode")
+    MCP_SESSION_TIMEOUT: int = Field(default=3600, description="MCP session timeout in seconds")
+    MCP_MAX_CONCURRENT_SESSIONS: int = Field(default=100, description="Maximum concurrent MCP sessions")
+    MCP_QUERY_TIMEOUT: int = Field(default=300, description="MCP query timeout in seconds")
+    MCP_MAX_RESULT_ROWS: int = Field(default=10000, description="Maximum rows returned per MCP query")
+
     # LLM Settings
     LLM_PROVIDERS: list[str] = Field(default=["openai", "anthropic"], description="Available LLM providers")
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key")

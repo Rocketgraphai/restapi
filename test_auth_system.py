@@ -206,10 +206,10 @@ class APITester:
         print("-" * 30)
 
         # Test without auth
-        self.test_endpoint("Access without auth", "GET", "/public/datasets", expected_status=401)
+        self.test_endpoint("Access without auth", "GET", "/public/graphs", expected_status=401)
 
         # Test with auth
-        self.test_endpoint("Access with auth", "GET", "/public/datasets", use_auth=True)
+        self.test_endpoint("Access with auth", "GET", "/public/graphs", use_auth=True)
 
         # Test 5: Edge Cases
         print("🧪 Edge Case Tests")

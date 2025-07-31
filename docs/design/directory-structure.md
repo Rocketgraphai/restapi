@@ -13,7 +13,7 @@ rocketgraph-public-api/
 │   │   ├── 📁 v1/                   # API version 1
 │   │   │   ├── 📁 public/           # Public API endpoints
 │   │   │   │   ├── __init__.py
-│   │   │   │   ├── datasets.py      # Dataset operations
+│   │   │   │   ├── graphs.py        # Graph operations
 │   │   │   │   ├── queries.py       # Query execution
 │   │   │   │   ├── schemas.py       # Schema operations
 │   │   │   │   ├── uploads.py       # Data upload
@@ -48,7 +48,7 @@ rocketgraph-public-api/
 │   │   ├── organization.py          # Organization model
 │   │   ├── user.py                  # User model
 │   │   ├── audit_log.py             # Audit log model
-│   │   ├── dataset.py               # Dataset model
+│   │   ├── graph.py                 # Graph model
 │   │   └── query.py                 # Query model
 │   ├── 📁 utils/                    # Utility functions
 │   │   ├── __init__.py
@@ -82,7 +82,7 @@ rocketgraph-public-api/
 │   │   ├── test_middleware.py       # Middleware tests
 │   │   └── test_api/                # API endpoint tests
 │   │       ├── __init__.py
-│   │       ├── test_datasets.py
+│   │       ├── test_graphs.py
 │   │       ├── test_queries.py
 │   │       └── test_uploads.py
 │   ├── 📁 integration/              # Integration tests

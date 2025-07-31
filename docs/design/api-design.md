@@ -3,7 +3,7 @@
 ## Design Principles
 
 ### RESTful Design
-- **Resource-based URLs**: `/datasets/{id}` not `/getDataset?id=123`
+- **Resource-based URLs**: `/graphs/{id}` not `/getGraph?id=123`
 - **HTTP Methods**: GET for retrieval, POST for creation, PUT for updates, DELETE for removal
 - **Status Codes**: Meaningful HTTP status codes with consistent error responses
 - **Stateless**: Each request contains all necessary information
@@ -42,18 +42,18 @@ Development: https://dev-api.rocketgraph.com/api/v1/public/
 
 ## Core Endpoints
 
-### 1. Dataset Operations
+### 1. Graph Operations
 
-#### List Datasets
+#### List Graphs
 ```http
-GET /api/v1/public/datasets
+GET /api/v1/public/graphs
 Authorization: Bearer rg_live_...
 ```
 
 **Query Parameters:**
 - `page` (integer): Page number (default: 1)
 - `per_page` (integer): Items per page (default: 50, max: 100)
-- `search` (string): Search by dataset name or description
+- `search` (string): Search by graph name or description
 - `created_after` (ISO 8601): Filter by creation date
 
 **Response:**
@@ -61,7 +61,7 @@ Authorization: Bearer rg_live_...
 {
   "data": [
     {
-      "id": "ds_7f8e9d0c1b2a3456",
+      "id": "gr_7f8e9d0c1b2a3456",
       "name": "customer_graph",
       "description": "Customer relationship and transaction data",
       "created_at": "2024-01-10T09:00:00Z",
@@ -87,9 +87,9 @@ Authorization: Bearer rg_live_...
 }
 ```
 
-#### Get Dataset Details
+#### Get Graph Details
 ```http
-GET /api/v1/public/datasets/{dataset_id}
+GET /api/v1/public/graphs/{graph_id}
 Authorization: Bearer rg_live_...
 ```
 
@@ -97,7 +97,7 @@ Authorization: Bearer rg_live_...
 ```json
 {
   "data": {
-    "id": "ds_7f8e9d0c1b2a3456",
+    "id": "gr_7f8e9d0c1b2a3456",
     "name": "customer_graph",
     "description": "Customer relationship and transaction data",
     "created_at": "2024-01-10T09:00:00Z",
@@ -140,9 +140,9 @@ Authorization: Bearer rg_live_...
 }
 ```
 
-#### Create Dataset
+#### Create Graph
 ```http
-POST /api/v1/public/datasets
+POST /api/v1/public/graphs
 Authorization: Bearer rg_live_...
 Content-Type: application/json
 ```
@@ -150,8 +150,8 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "name": "new_dataset",
-  "description": "Description of the new dataset",
+  "name": "new_graph",
+  "description": "Description of the new graph",
   "schema": {
     "nodes": [
       {
@@ -180,8 +180,8 @@ Content-Type: application/json
 ```json
 {
   "data": {
-    "id": "ds_new123456789",
-    "name": "new_dataset",
+    "id": "gr_new123456789",
+    "name": "new_graph",
     "status": "creating",
     "created_at": "2024-01-15T10:30:00Z"
   },
@@ -197,7 +197,7 @@ Content-Type: application/json
 
 #### Execute Query
 ```http
-POST /api/v1/public/datasets/{dataset_id}/query
+POST /api/v1/public/graphs/{graph_id}/query
 Authorization: Bearer rg_live_...
 Content-Type: application/json
 ```
@@ -304,7 +304,7 @@ Authorization: Bearer rg_live_...
 
 #### Get Schema Information
 ```http
-GET /api/v1/public/datasets/{dataset_id}/schema
+GET /api/v1/public/graphs/{graph_id}/schema
 Authorization: Bearer rg_live_...
 ```
 
@@ -430,9 +430,9 @@ Content-Type: application/json
 
 ### 4. Data Upload Operations
 
-#### Upload Data to Dataset
+#### Upload Data to Graph
 ```http
-POST /api/v1/public/datasets/{dataset_id}/data
+POST /api/v1/public/graphs/{graph_id}/data
 Authorization: Bearer rg_live_...
 Content-Type: multipart/form-data
 ```
@@ -504,7 +504,7 @@ Authorization: Bearer rg_live_...
     "api_key": {
       "id": "key_ghi789",
       "name": "Production API Key",
-      "scopes": ["datasets:read", "queries:execute"],
+      "scopes": ["graphs:read", "queries:execute"],
       "rate_limits": {
         "requests_per_hour": 10000,
         "requests_per_day": 100000
@@ -530,8 +530,8 @@ Authorization: Bearer rg_live_...
 {
   "error": {
     "code": "RESOURCE_NOT_FOUND",
-    "message": "The requested dataset does not exist",
-    "details": "Dataset with ID 'ds_invalid123' was not found or you don't have access to it",
+    "message": "The requested graph does not exist",
+    "details": "Graph with ID 'gr_invalid123' was not found or you don't have access to it",
     "request_id": "req_error123",
     "timestamp": "2024-01-15T10:30:00Z",
     "documentation_url": "https://docs.rocketgraph.com/api/errors#resource-not-found"
@@ -602,10 +602,10 @@ ERROR_CODES = {
 
 ### Standard Pagination
 ```http
-GET /api/v1/public/datasets?page=2&per_page=50
+GET /api/v1/public/graphs?page=2&per_page=50
 ```
 
-### Cursor-Based Pagination (for large datasets)
+### Cursor-Based Pagination (for large graphs)
 ```http
 GET /api/v1/public/query/{job_id}/results?cursor=eyJpZCI6MTIzfQ&limit=1000
 ```

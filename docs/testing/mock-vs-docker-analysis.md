@@ -84,7 +84,7 @@ Use a **hybrid strategy** that leverages the strengths of both approaches:
 - Test real API interactions with proper data setup
 
 ### 2. Enhanced Mocks for Unit Tests
-- Keep mocks for unit tests (`test_datasets.py`, `test_frames.py`, etc.)
+- Keep mocks for unit tests (`test_graphs.py`, `test_frames.py`, etc.)
 - Create proper Mock fixtures that handle the complex XGT interfaces
 - Use for fast unit testing and error condition simulation
 
@@ -121,13 +121,13 @@ class MockXGTConnection:
 ```python
 # Integration tests use Docker
 @pytest.mark.integration
-def test_datasets_endpoint_with_xgt_container(xgt_container, client):
+def test_graphs_endpoint_with_xgt_container(xgt_container, client):
     # Real XGT interactions
     pass
 
 # Unit tests use enhanced mocks  
 @pytest.mark.unit
-def test_datasets_logic_with_mocks(mock_xgt_operations, client):
+def test_graphs_logic_with_mocks(mock_xgt_operations, client):
     # Fast, controlled testing
     pass
 ```

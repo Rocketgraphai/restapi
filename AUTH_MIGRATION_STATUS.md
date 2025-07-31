@@ -14,11 +14,11 @@ The new pass-through authentication system has been successfully implemented and
 |----------|------|--------|-----------------|
 | `GET /query/{job_id}/results` | `query.py:497` | ✅ **UPDATED** | Updated to use pass-through auth |
 | `GET /query/jobs` | `query.py:203` | ✅ **UPDATED** | Updated to use pass-through auth |
-| `POST /datasets/{dataset_name}/query` | `query.py:305` | ✅ **UPDATED** | Updated to use pass-through auth |
+| `POST /graphs/{graph_name}/query` | `query.py:305` | ✅ **UPDATED** | Updated to use pass-through auth |
 | `GET /query/{job_id}/status` | `query.py:402` | ✅ **UPDATED** | Updated to use pass-through auth |
-| `GET /datasets` | `datasets.py:153` | ✅ **UPDATED** | Updated to use pass-through auth |
-| `GET /datasets/{dataset_name}` | `datasets.py:394` | ✅ **UPDATED** | Updated to use pass-through auth |
-| `GET /datasets/{dataset_name}/schema` | `datasets.py:270` | ✅ **UPDATED** | Updated to use pass-through auth |
+| `GET /graphs` | `graphs.py:153` | ✅ **UPDATED** | Updated to use pass-through auth |
+| `GET /graphs/{graph_name}` | `graphs.py:394` | ✅ **UPDATED** | Updated to use pass-through auth |
+| `GET /graphs/{graph_name}/schema` | `graphs.py:270` | ✅ **UPDATED** | Updated to use pass-through auth |
 | `GET /frames` | `frames.py:137` | ✅ **UPDATED** | Updated to use pass-through auth |
 | `GET /frames/{frame_name}/data` | `frames.py:296` | ✅ **UPDATED** | Updated to use pass-through auth |
 
@@ -116,10 +116,10 @@ async def health():
 
 ### Phase 1: COMPLETED ✅
 1. ✅ **DONE**: Update `/query/{job_id}/results` endpoint
-2. ✅ **DONE**: Update remaining query endpoints (`/query/jobs`, `/query/{job_id}/status`, `/datasets/{dataset_name}/query`)
-3. ✅ **DONE**: Update dataset endpoints (`/datasets`, `/datasets/{dataset_name}`, `/datasets/{dataset_name}/schema`)
+2. ✅ **DONE**: Update remaining query endpoints (`/query/jobs`, `/query/{job_id}/status`, `/graphs/{graph_name}/query`)
+3. ✅ **DONE**: Update graph endpoints (`/graphs`, `/graphs/{graph_name}`, `/graphs/{graph_name}/schema`)
 4. ✅ **DONE**: Update frame endpoints (`/frames`, `/frames/{frame_name}/data`)
-5. ✅ **DONE**: Added missing methods to UserXGTOperations (`datasets_info`, `get_frame_data`, `get_schema`)
+5. ✅ **DONE**: Added missing methods to UserXGTOperations (`graphs_info`, `get_frame_data`, `get_schema`)
 
 ### Phase 2: Important
 1. Update health endpoints to remove admin credential dependency

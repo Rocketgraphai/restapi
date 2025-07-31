@@ -51,7 +51,7 @@ class QueryResponse(BaseModel):
     job_id: int = Field(..., description="Job ID for tracking query execution")
     status: str = Field(..., description="Current job status")
     query: str = Field(..., description="The executed query")
-    dataset_name: str = Field(..., description="Dataset the query was executed against")
+    graph_name: str = Field(..., description="Graph the query was executed against")
     submitted_at: float = Field(..., description="Unix timestamp when query was submitted")
     estimated_completion: Optional[str] = Field(None, description="Estimated completion time (ISO 8601)")
 
@@ -61,7 +61,7 @@ class QueryResponse(BaseModel):
                 "job_id": 12345,
                 "status": "queued",
                 "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
-                "dataset_name": "ecommerce",
+                "graph_name": "ecommerce",
                 "submitted_at": 1642248000.0,
                 "estimated_completion": "2024-01-15T10:32:00Z",
             }
@@ -131,7 +131,7 @@ class JobHistoryItem(BaseModel):
     job_id: int = Field(..., description="Job ID")
     status: str = Field(..., description="Job status")
     query: str = Field(..., description="Query that was executed")
-    dataset_name: Optional[str] = Field(None, description="Dataset the query was executed against")
+    graph_name: Optional[str] = Field(None, description="Graph the query was executed against")
     submitted_at: float = Field(..., description="Unix timestamp when query was submitted")
     start_time: Optional[float] = Field(None, description="Unix timestamp when job started")
     end_time: Optional[float] = Field(None, description="Unix timestamp when job completed")
@@ -143,7 +143,7 @@ class JobHistoryItem(BaseModel):
                 "job_id": 12345,
                 "status": "completed",
                 "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
-                "dataset_name": "ecommerce",
+                "graph_name": "ecommerce",
                 "submitted_at": 1642248000.0,
                 "start_time": 1642248000.0,
                 "end_time": 1642248045.0,
@@ -170,7 +170,7 @@ class JobHistoryResponse(BaseModel):
                         "job_id": 12345,
                         "status": "completed",
                         "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
-                        "dataset_name": "ecommerce",
+                        "graph_name": "ecommerce",
                         "submitted_at": 1642248000.0,
                         "start_time": 1642248000.0,
                         "end_time": 1642248045.0,
@@ -192,7 +192,7 @@ async def list_job_history(
     page: int = Query(default=1, ge=1, description="Page number (1-based)"),
     per_page: int = Query(default=50, ge=1, le=200, description="Number of jobs per page (max 200)"),
     status: Optional[str] = Query(default=None, description="Filter by job status"),
-    dataset_name: Optional[str] = Query(default=None, description="Filter by dataset name"),
+    graph_name: Optional[str] = Query(default=None, description="Filter by graph name"),
 ):
     """
     List all jobs in the query history.
@@ -205,7 +205,7 @@ async def list_job_history(
         page: Page number for pagination (1-based)
         per_page: Number of jobs per page
         status: Filter jobs by status (queued, running, completed, failed)
-        dataset_name: Filter jobs by dataset name
+        graph_name: Filter jobs by graph name
 
     Returns:
         Paginated list of job history with metadata
@@ -236,7 +236,7 @@ async def list_job_history(
                     job_id=job_info["job_id"],
                     status=job_info["status"],
                     query=job_info["query"],
-                    dataset_name=job_info.get("dataset_name"),
+                    graph_name=job_info.get("graph_name"),
                     submitted_at=job_info["submitted_at"],
                     start_time=job_info.get("start_time"),
                     end_time=job_info.get("end_time"),
@@ -284,9 +284,9 @@ async def list_job_history(
         )
 
 
-@router.post("/datasets/{dataset_name}/query", response_model=QueryResponse)
+@router.post("/graphs/{graph_name}/query", response_model=QueryResponse)
 async def execute_query(
-    dataset_name: str,
+    graph_name: str,
     query_request: QueryRequest,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
 ):
@@ -298,7 +298,7 @@ async def execute_query(
     and retrieve results.
 
     Args:
-        dataset_name: Name of the dataset to query
+        graph_name: Name of the graph to query
         query_request: Query details including Cypher query and parameters
 
     Returns:
@@ -308,7 +308,7 @@ async def execute_query(
         HTTPException: If query validation fails or submission errors occur
     """
     try:
-        logger.info(f"Executing query on dataset {dataset_name}")
+        logger.info(f"Executing query on graph {graph_name}")
         logger.debug(f"Query: {query_request.query}")
 
         # Execute query using user's XGT operations
@@ -319,7 +319,7 @@ async def execute_query(
             "job_id": hash(query_request.query + str(time.time())) % 1000000,
             "status": "completed",
             "query": query_request.query,
-            "dataset_name": dataset_name,
+            "graph_name": graph_name,
             "submitted_at": time.time(),
             "results": results,
         }
@@ -330,7 +330,7 @@ async def execute_query(
             job_id=job_info["job_id"],
             status=job_info["status"],
             query=job_info["query"],
-            dataset_name=job_info["dataset_name"],
+            graph_name=job_info["graph_name"],
             submitted_at=job_info["submitted_at"],
             estimated_completion=None,  # XGT doesn't provide this yet
         )

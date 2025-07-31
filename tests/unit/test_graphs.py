@@ -1,5 +1,5 @@
 """
-Unit tests for dataset endpoints.
+Unit tests for graph endpoints.
 """
 
 import time
@@ -34,12 +34,12 @@ def client():
     app.dependency_overrides.clear()
 
 
-class TestDatasetsEndpoint:
-    """Test datasets listing endpoint."""
+class TestGraphsEndpoint:
+    """Test graphs listing endpoint."""
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_list_datasets_success(self, mock_create_user_xgt_ops, client):
-        """Test successful datasets listing."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_list_graphs_success(self, mock_create_user_xgt_ops, client):
+        """Test successful graphs listing."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
             {
@@ -59,48 +59,48 @@ class TestDatasetsEndpoint:
         ]
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         assert response.status_code == 200
         data = response.json()
 
-        assert "datasets" in data
+        assert "graphs" in data
         assert "total_count" in data
 
-        # Should have one dataset with vertices
+        # Should have one graph with vertices
         assert data["total_count"] == 1
-        assert len(data["datasets"]) == 1
+        assert len(data["graphs"]) == 1
 
-        dataset = data["datasets"][0]
-        assert dataset["name"] == "test_namespace"
-        assert len(dataset["vertices"]) == 1
-        assert len(dataset["edges"]) == 0
+        graph = data["graphs"][0]
+        assert graph["name"] == "test_namespace"
+        assert len(graph["vertices"]) == 1
+        assert len(graph["edges"]) == 0
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_list_datasets_empty(self, mock_create_user_xgt_ops, client):
-        """Test datasets listing when no datasets exist."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_list_graphs_empty(self, mock_create_user_xgt_ops, client):
+        """Test graphs listing when no graphs exist."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = []
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         assert response.status_code == 200
         data = response.json()
 
         assert data["total_count"] == 0
-        assert len(data["datasets"]) == 0
+        assert len(data["graphs"]) == 0
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_list_datasets_xgt_connection_error(self, mock_create_user_xgt_ops, client):
-        """Test datasets listing when XGT connection fails."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_list_graphs_xgt_connection_error(self, mock_create_user_xgt_ops, client):
+        """Test graphs listing when XGT connection fails."""
         from app.utils.exceptions import XGTConnectionError
 
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.side_effect = XGTConnectionError("Connection failed")
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         # Should return 503 when XGT connection fails
         assert response.status_code == 503
@@ -110,9 +110,9 @@ class TestDatasetsEndpoint:
         error_message = data["error"]["message"]
         assert error_message["error"] == "XGT_CONNECTION_ERROR"
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_info_success(self, mock_create_user_xgt_ops, client):
-        """Test successful single dataset retrieval."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_info_success(self, mock_create_user_xgt_ops, client):
+        """Test successful single graph retrieval."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = [
             {
@@ -132,7 +132,7 @@ class TestDatasetsEndpoint:
         ]
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/social_network")
+        response = client.get("/api/v1/public/graphs/social_network")
 
         assert response.status_code == 200
         data = response.json()
@@ -145,14 +145,14 @@ class TestDatasetsEndpoint:
         assert vertex["name"] == "users"
         assert vertex["num_rows"] == 1000
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_info_not_found(self, mock_create_user_xgt_ops, client):
-        """Test dataset retrieval when dataset doesn't exist."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_info_not_found(self, mock_create_user_xgt_ops, client):
+        """Test graph retrieval when graph doesn't exist."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.datasets_info.return_value = []
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/nonexistent")
+        response = client.get("/api/v1/public/graphs/nonexistent")
 
         assert response.status_code == 404
         data = response.json()
@@ -160,19 +160,19 @@ class TestDatasetsEndpoint:
         # FastAPI wraps HTTPException in custom error handler format
         assert data["error"]["code"] == "HTTP_404"
         error_message = data["error"]["message"]
-        assert error_message["error"] == "DATASET_NOT_FOUND"
+        assert error_message["error"] == "GRAPH_NOT_FOUND"
         assert "nonexistent" in error_message["message"]
 
 
-class TestDatasetSchemaEndpoint:
-    """Test dataset schema endpoint."""
+class TestGraphSchemaEndpoint:
+    """Test graph schema endpoint."""
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_schema_success(self, mock_create_user_xgt_ops, client):
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_schema_success(self, mock_create_user_xgt_ops, client):
         """Test successful schema retrieval."""
         mock_xgt_ops = Mock()
         mock_xgt_ops.get_schema.return_value = {
-            "graph": "test_dataset",
+            "graph": "test_graph",
             "nodes": [
                 {
                     "name": "Customer",
@@ -200,12 +200,12 @@ class TestDatasetSchemaEndpoint:
         }
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/test_dataset/schema")
+        response = client.get("/api/v1/public/graphs/test_graph/schema")
 
         assert response.status_code == 200
         data = response.json()
 
-        assert data["graph"] == "test_dataset"
+        assert data["graph"] == "test_graph"
         assert len(data["nodes"]) == 1
         assert len(data["edges"]) == 1
 
@@ -231,22 +231,22 @@ class TestDatasetSchemaEndpoint:
         assert edge["target_key"] == "id"
         assert len(edge["properties"]) == 2
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_schema_with_params(self, mock_create_user_xgt_ops, client):
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_schema_with_params(self, mock_create_user_xgt_ops, client):
         """Test schema retrieval with query parameters."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.get_schema.return_value = {"graph": "test_dataset", "nodes": [], "edges": []}
+        mock_xgt_ops.get_schema.return_value = {"graph": "test_graph", "nodes": [], "edges": []}
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/test_dataset/schema?fully_qualified=true&add_missing_edge_nodes=true")
+        response = client.get("/api/v1/public/graphs/test_graph/schema?fully_qualified=true&add_missing_edge_nodes=true")
 
         assert response.status_code == 200
 
-        # Verify that the parameters were passed to get_schema
-        mock_xgt_ops.get_schema.assert_called_once_with(dataset_name="test_dataset", fully_qualified=True, add_missing_edge_nodes=True)
+        # Verify that the parameters were passed to get_schema (still using dataset_name for XGT calls)
+        mock_xgt_ops.get_schema.assert_called_once_with(dataset_name="test_graph", fully_qualified=True, add_missing_edge_nodes=True)
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_schema_xgt_error(self, mock_create_user_xgt_ops, client):
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_schema_xgt_error(self, mock_create_user_xgt_ops, client):
         """Test schema retrieval when XGT operation fails."""
         from app.utils.exceptions import XGTOperationError
 
@@ -254,7 +254,7 @@ class TestDatasetSchemaEndpoint:
         mock_xgt_ops.get_schema.side_effect = XGTOperationError("Schema not found")
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/test_dataset/schema")
+        response = client.get("/api/v1/public/graphs/test_graph/schema")
 
         assert response.status_code == 500
         data = response.json()
@@ -265,18 +265,18 @@ class TestDatasetSchemaEndpoint:
         assert error_message["error"] == "XGT_OPERATION_ERROR"
         assert "Failed to retrieve schema" in error_message["message"]
 
-    @patch("app.api.v1.public.datasets.create_user_xgt_operations")
-    def test_get_dataset_schema_empty_dataset(self, mock_create_user_xgt_ops, client):
-        """Test schema retrieval for dataset with no frames."""
+    @patch("app.api.v1.public.graphs.create_user_xgt_operations")
+    def test_get_graph_schema_empty_graph(self, mock_create_user_xgt_ops, client):
+        """Test schema retrieval for graph with no frames."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.get_schema.return_value = {"graph": "empty_dataset", "nodes": [], "edges": []}
+        mock_xgt_ops.get_schema.return_value = {"graph": "empty_graph", "nodes": [], "edges": []}
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/datasets/empty_dataset/schema")
+        response = client.get("/api/v1/public/graphs/empty_graph/schema")
 
         assert response.status_code == 200
         data = response.json()
 
-        assert data["graph"] == "empty_dataset"
+        assert data["graph"] == "empty_graph"
         assert len(data["nodes"]) == 0
         assert len(data["edges"]) == 0

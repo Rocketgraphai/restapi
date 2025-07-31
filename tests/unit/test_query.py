@@ -55,7 +55,7 @@ class TestQueryExecution:
             "limit": 1000,
         }
 
-        response = client.post("/api/v1/public/datasets/ecommerce/query", json=query_data)
+        response = client.post("/api/v1/public/graphs/ecommerce/query", json=query_data)
 
         assert response.status_code == 200
         data = response.json()
@@ -63,7 +63,7 @@ class TestQueryExecution:
         assert "job_id" in data
         assert data["status"] == "completed"
         assert data["query"] == "MATCH (c:Customer) RETURN c.name LIMIT 10"
-        assert data["dataset_name"] == "ecommerce"
+        assert data["graph_name"] == "ecommerce"
         assert "submitted_at" in data
 
         # Verify XGT operations was called correctly
@@ -85,14 +85,14 @@ class TestQueryExecution:
             "format": "json",
         }
 
-        response = client.post("/api/v1/public/datasets/test_dataset/query", json=query_data)
+        response = client.post("/api/v1/public/graphs/test_graph/query", json=query_data)
 
         assert response.status_code == 200
         data = response.json()
 
         assert "job_id" in data
         assert data["status"] == "completed"
-        assert data["dataset_name"] == "test_dataset"
+        assert data["graph_name"] == "test_graph"
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_execute_query_invalid_query(self, mock_create_user_xgt_ops, client):
@@ -105,7 +105,7 @@ class TestQueryExecution:
 
         query_data = {"query": "MATCH (c:Customer) RETURN c.name INTO temp_table", "format": "json"}
 
-        response = client.post("/api/v1/public/datasets/test_dataset/query", json=query_data)
+        response = client.post("/api/v1/public/graphs/test_graph/query", json=query_data)
 
         assert response.status_code == 400
         data = response.json()
@@ -126,7 +126,7 @@ class TestQueryExecution:
 
         query_data = {"query": "MATCH (c:Customer) RETURN c.name LIMIT 10", "format": "json"}
 
-        response = client.post("/api/v1/public/datasets/test_dataset/query", json=query_data)
+        response = client.post("/api/v1/public/graphs/test_graph/query", json=query_data)
 
         assert response.status_code == 503
         data = response.json()
@@ -138,18 +138,18 @@ class TestQueryExecution:
     def test_execute_query_validation_error(self, client):
         """Test query execution with invalid request format."""
         # Empty query
-        response = client.post("/api/v1/public/datasets/test_dataset/query", json={"query": "", "format": "json"})
+        response = client.post("/api/v1/public/graphs/test_graph/query", json={"query": "", "format": "json"})
         assert response.status_code == 422
 
         # Invalid format
         response = client.post(
-            "/api/v1/public/datasets/test_dataset/query",
+            "/api/v1/public/graphs/test_graph/query",
             json={"query": "MATCH (c:Customer) RETURN c.name", "format": "invalid_format"},
         )
         assert response.status_code == 422
 
         # Missing query
-        response = client.post("/api/v1/public/datasets/test_dataset/query", json={"format": "json"})
+        response = client.post("/api/v1/public/graphs/test_graph/query", json={"format": "json"})
         assert response.status_code == 422
 
 
@@ -400,11 +400,11 @@ class TestJobHistory:
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_get_job_history_with_filters(self, mock_create_user_xgt_ops, client):
-        """Test job history retrieval with status and dataset filters."""
+        """Test job history retrieval with status and graph filters."""
         mock_xgt_ops = Mock()
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
-        response = client.get("/api/v1/public/query/jobs?status=failed&dataset_name=ecommerce")
+        response = client.get("/api/v1/public/query/jobs?status=failed&graph_name=ecommerce")
 
         assert response.status_code == 200
         data = response.json()

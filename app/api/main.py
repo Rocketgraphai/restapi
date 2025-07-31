@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from ..config.app_config import get_settings
 from ..utils.exceptions import BaseAPIException
 from .v1.auth import passthrough_auth
-from .v1.public import datasets, frames, health, query
+from .v1.public import graphs, frames, health, query
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -152,7 +152,7 @@ def create_app() -> FastAPI:
     # Public endpoints (will require authentication after migration)
     app.include_router(health.router, prefix="/api/v1/public", tags=["health"])
 
-    app.include_router(datasets.router, prefix="/api/v1/public", tags=["datasets"])
+    app.include_router(graphs.router, prefix="/api/v1/public", tags=["graphs"])
 
     app.include_router(frames.router, prefix="/api/v1/public", tags=["frames"])
 

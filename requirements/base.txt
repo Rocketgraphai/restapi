@@ -4,6 +4,9 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 
+# MCP (Model Context Protocol)
+mcp>=1.0.0
+
 # Database & Caching
 pymongo>=4.6.0
 redis>=5.0.0

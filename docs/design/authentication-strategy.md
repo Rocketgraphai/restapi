@@ -68,9 +68,9 @@ Each API key is associated with:
 **Database Level**
 ```python
 # All queries automatically scoped by organization
-def get_datasets(api_key):
+def get_graphs(api_key):
     org_id = api_key.organization_id
-    return xgt_ops.get_datasets(organization_id=org_id)
+    return xgt_ops.get_graphs(organization_id=org_id)
 ```
 
 **XGT Connection Isolation**
@@ -87,7 +87,7 @@ def get_datasets(api_key):
    POST /api/v1/admin/api-keys
    {
      "name": "Production Integration",
-     "scopes": ["datasets:read", "queries:execute"],
+     "scopes": ["graphs:read", "queries:execute"],
      "expires_at": "2025-12-31T23:59:59Z"
    }
    ```
@@ -138,11 +138,11 @@ class ApiKey:
 **Available Scopes**
 ```python
 SCOPES = {
-    # Dataset operations
-    'datasets:read',          # List and view datasets
-    'datasets:create',        # Create new datasets
-    'datasets:modify',        # Update dataset metadata
-    'datasets:delete',        # Delete datasets
+    # Graph operations
+    'graphs:read',            # List and view graphs
+    'graphs:create',          # Create new graphs
+    'graphs:modify',          # Update graph metadata
+    'graphs:delete',          # Delete graphs
     
     # Query operations  
     'queries:execute',        # Run graph queries
@@ -154,7 +154,7 @@ SCOPES = {
     'schemas:modify',         # Update schemas
     
     # Data operations
-    'data:upload',            # Upload data to datasets
+    'data:upload',            # Upload data to graphs
     'data:download',          # Download query results
     
     # Administrative
@@ -188,14 +188,14 @@ def check_permission(api_key, required_scope):
 ```python
 ROLE_TEMPLATES = {
     'viewer': [
-        'datasets:read',
+        'graphs:read',
         'queries:execute',
         'schemas:read'
     ],
     
     'developer': [
-        'datasets:read',
-        'datasets:create',
+        'graphs:read',
+        'graphs:create',
         'queries:execute',
         'queries:history',
         'schemas:read',

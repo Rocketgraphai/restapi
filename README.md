@@ -178,7 +178,7 @@ For standalone XGT testing:
 ./scripts/pytest-xgt.sh
 
 # Run specific tests
-./scripts/pytest-xgt.sh tests/integration/test_xgt_datasets.py -k "concurrent"
+./scripts/pytest-xgt.sh tests/integration/test_xgt_graphs.py -k "concurrent"
 ```
 
 #### GitHub Actions Testing
@@ -310,7 +310,7 @@ All API requests require a valid API key in the Authorization header:
 
 ```bash
 curl -H "Authorization: Bearer rg_live_your_api_key_here" \
-  https://api.rocketgraph.com/api/v1/public/datasets
+  https://api.rocketgraph.com/api/v1/public/graphs
 ```
 
 ### Security Features
@@ -336,7 +336,7 @@ Prometheus metrics available at `:9090/metrics` (configurable):
 - Request rates and latencies
 - Error rates by endpoint
 - Rate limiting violations  
-- Business metrics (queries, datasets, etc.)
+- Business metrics (queries, graphs, etc.)
 
 ## Contributing
 

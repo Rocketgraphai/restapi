@@ -1,7 +1,7 @@
 """
-Dataset discovery endpoints for the RocketGraph Public API.
+Graph discovery endpoints for the RocketGraph Public API.
 
-Provides read-only access to discover available datasets and their metadata.
+Provides read-only access to discover available graphs and their metadata.
 """
 
 import logging
@@ -20,8 +20,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-class DatasetFrameInfo(BaseModel):
-    """Information about a frame (vertex or edge) in a dataset."""
+class FrameInfo(BaseModel):
+    """Information about a frame (vertex or edge) in a graph."""
 
     name: str = Field(..., description="Frame name")
     schema_definition: list[list[Any]] = Field(..., description="Frame schema definition")
@@ -30,13 +30,13 @@ class DatasetFrameInfo(BaseModel):
     delete_frame: bool = Field(..., description="Whether user can delete frame")
 
 
-class VertexFrameInfo(DatasetFrameInfo):
+class VertexFrameInfo(FrameInfo):
     """Information about a vertex frame."""
 
     key: str = Field(..., description="Primary key column name")
 
 
-class EdgeFrameInfo(DatasetFrameInfo):
+class EdgeFrameInfo(FrameInfo):
     """Information about an edge frame."""
 
     source_frame: str = Field(..., description="Source vertex frame name")
@@ -45,12 +45,12 @@ class EdgeFrameInfo(DatasetFrameInfo):
     target_key: str = Field(..., description="Target key column name")
 
 
-class DatasetInfo(BaseModel):
-    """Information about a dataset (namespace)."""
+class GraphInfo(BaseModel):
+    """Information about a graph (namespace)."""
 
-    name: str = Field(..., description="Dataset name")
-    vertices: list[VertexFrameInfo] = Field(..., description="Vertex frames in the dataset")
-    edges: list[EdgeFrameInfo] = Field(..., description="Edge frames in the dataset")
+    name: str = Field(..., description="Graph name")
+    vertices: list[VertexFrameInfo] = Field(..., description="Vertex frames in the graph")
+    edges: list[EdgeFrameInfo] = Field(..., description="Edge frames in the graph")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -84,11 +84,11 @@ class DatasetInfo(BaseModel):
     )
 
 
-class DatasetsResponse(BaseModel):
-    """Response for datasets listing."""
+class GraphsResponse(BaseModel):
+    """Response for graphs listing."""
 
-    datasets: list[DatasetInfo] = Field(..., description="Available datasets")
-    total_count: int = Field(..., description="Total number of datasets")
+    graphs: list[GraphInfo] = Field(..., description="Available graphs")
+    total_count: int = Field(..., description="Total number of graphs")
 
 
 class SchemaProperty(BaseModel):
@@ -122,7 +122,7 @@ class EdgeSchema(BaseModel):
 class SchemaResponse(BaseModel):
     """Schema information response."""
 
-    graph: str = Field(..., description="Dataset/graph name")
+    graph: str = Field(..., description="Graph name")
     nodes: list[NodeSchema] = Field(..., description="Node schemas")
     edges: list[EdgeSchema] = Field(..., description="Edge schemas")
 
@@ -164,39 +164,40 @@ class SchemaResponse(BaseModel):
     )
 
 
-@router.get("/datasets", response_model=DatasetsResponse)
-async def list_datasets(
+@router.get("/graphs", response_model=GraphsResponse)
+async def list_graphs(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
-    include_empty: bool = Query(default=False, description="Include datasets with no frames"),
+    include_empty: bool = Query(default=False, description="Include graphs with no frames"),
 ):
     """
-    List all datasets available to the organization.
+    List all graphs available to the organization.
 
-    Returns metadata about datasets (namespaces) that contain graph data.
-    Each dataset contains vertex frames (nodes) and edge frames (relationships).
+    Returns metadata about graphs (namespaces) that contain graph data.
+    Each graph contains vertex frames (nodes) and edge frames (relationships).
 
     Args:
-        include_empty: Whether to include datasets that have no frames
+        include_empty: Whether to include graphs that have no frames
 
     Returns:
-        List of datasets with their frame information
+        List of graphs with their frame information
 
     Raises:
         HTTPException: If XGT connection fails or operation errors occur
     """
     try:
-        logger.info("Listing datasets from XGT server")
+        logger.info("Listing graphs from XGT server")
 
         # Create user-specific XGT operations instance
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
-        # Get datasets accessible to user (their namespace)
+        # Get graphs accessible to user (their namespace)
+        # Note: Using datasets_info() until XGT graph API is available
         datasets_raw = user_xgt_ops.datasets_info()
 
         # Transform the raw data into our response format
-        datasets = []
+        graphs = []
         for dataset_raw in datasets_raw:
-            # Skip empty datasets if not requested
+            # Skip empty graphs if not requested
             if not include_empty and not dataset_raw.get("vertices") and not dataset_raw.get("edges"):
                 continue
 
@@ -231,11 +232,11 @@ async def list_datasets(
                     )
                 )
 
-            datasets.append(DatasetInfo(name=dataset_raw["name"], vertices=vertices, edges=edges))
+            graphs.append(GraphInfo(name=dataset_raw["name"], vertices=vertices, edges=edges))
 
-        logger.info(f"Found {len(datasets)} datasets")
+        logger.info(f"Found {len(graphs)} graphs")
 
-        return DatasetsResponse(datasets=datasets, total_count=len(datasets))
+        return GraphsResponse(graphs=graphs, total_count=len(graphs))
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
@@ -253,12 +254,12 @@ async def list_datasets(
             status_code=500,
             detail={
                 "error": "XGT_OPERATION_ERROR",
-                "message": "Failed to retrieve datasets",
+                "message": "Failed to retrieve graphs",
                 "details": str(e),
             },
         )
     except Exception as e:
-        logger.error(f"Unexpected error listing datasets: {e}")
+        logger.error(f"Unexpected error listing graphs: {e}")
         raise HTTPException(
             status_code=500,
             detail={
@@ -269,39 +270,40 @@ async def list_datasets(
         )
 
 
-@router.get("/datasets/{dataset_name}/schema", response_model=SchemaResponse)
-async def get_dataset_schema(
-    dataset_name: str,
+@router.get("/graphs/{graph_name}/schema", response_model=SchemaResponse)
+async def get_graph_schema(
+    graph_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
     fully_qualified: bool = Query(default=False, description="Include namespace information in frame names"),
     add_missing_edge_nodes: bool = Query(default=False, description="Include missing edge nodes in the schema"),
 ):
     """
-    Get schema information for a specific dataset.
+    Get schema information for a specific graph.
 
     Returns detailed schema information including node and edge frame definitions,
     their properties, types, and relationships.
 
     Args:
-        dataset_name: Name of the dataset to get schema for
+        graph_name: Name of the graph to get schema for
         fully_qualified: Whether to include namespace information
         add_missing_edge_nodes: Whether to include missing edge nodes
 
     Returns:
-        Schema information for the dataset
+        Schema information for the graph
 
     Raises:
-        HTTPException: If dataset not found or XGT operation fails
+        HTTPException: If graph not found or XGT operation fails
     """
     try:
-        logger.info(f"Getting schema for dataset: {dataset_name}")
+        logger.info(f"Getting schema for graph: {graph_name}")
 
         # Create user-specific XGT operations instance
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get schema information from XGT
+        # Note: Using dataset_name parameter until XGT graph API is available
         schema_raw = user_xgt_ops.get_schema(
-            dataset_name=dataset_name,
+            dataset_name=graph_name,
             fully_qualified=fully_qualified,
             add_missing_edge_nodes=add_missing_edge_nodes,
         )
@@ -345,9 +347,9 @@ async def get_dataset_schema(
                 )
             )
 
-        logger.info(f"Retrieved schema for {dataset_name}: {len(nodes)} nodes, {len(edges)} edges")
+        logger.info(f"Retrieved schema for {graph_name}: {len(nodes)} nodes, {len(edges)} edges")
 
-        return SchemaResponse(graph=schema_raw.get("graph", dataset_name), nodes=nodes, edges=edges)
+        return SchemaResponse(graph=schema_raw.get("graph", graph_name), nodes=nodes, edges=edges)
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")
@@ -365,12 +367,12 @@ async def get_dataset_schema(
             status_code=500,
             detail={
                 "error": "XGT_OPERATION_ERROR",
-                "message": f"Failed to retrieve schema for dataset '{dataset_name}'",
+                "message": f"Failed to retrieve schema for graph '{graph_name}'",
                 "details": str(e),
             },
         )
     except Exception as e:
-        logger.error(f"Unexpected error getting schema for {dataset_name}: {e}")
+        logger.error(f"Unexpected error getting schema for {graph_name}: {e}")
         raise HTTPException(
             status_code=500,
             detail={
@@ -381,48 +383,49 @@ async def get_dataset_schema(
         )
 
 
-@router.get("/datasets/{dataset_name}", response_model=DatasetInfo)
-async def get_dataset_info(
-    dataset_name: str,
+@router.get("/graphs/{graph_name}", response_model=GraphInfo)
+async def get_graph_info(
+    graph_name: str,
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
 ):
     """
-    Get detailed information about a specific dataset.
+    Get detailed information about a specific graph.
 
-    Returns comprehensive metadata about a dataset including all vertex and edge frames,
+    Returns comprehensive metadata about a graph including all vertex and edge frames,
     their schemas, row counts, and permissions.
 
     Args:
-        dataset_name: Name of the dataset to retrieve
+        graph_name: Name of the graph to retrieve
 
     Returns:
-        Detailed dataset information
+        Detailed graph information
 
     Raises:
-        HTTPException: If dataset not found or XGT operation fails
+        HTTPException: If graph not found or XGT operation fails
     """
     try:
-        logger.info(f"Getting dataset info for: {dataset_name}")
+        logger.info(f"Getting graph info for: {graph_name}")
 
         # Create user-specific XGT operations instance
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
-        # Get specific dataset information
-        datasets_raw = user_xgt_ops.datasets_info(dataset_name=dataset_name)
+        # Get specific graph information
+        # Note: Using dataset_name parameter until XGT graph API is available
+        datasets_raw = user_xgt_ops.datasets_info(dataset_name=graph_name)
 
         if not datasets_raw:
             raise HTTPException(
                 status_code=404,
                 detail={
-                    "error": "DATASET_NOT_FOUND",
-                    "message": f"Dataset '{dataset_name}' not found",
-                    "details": f"No dataset named '{dataset_name}' exists",
+                    "error": "GRAPH_NOT_FOUND",
+                    "message": f"Graph '{graph_name}' not found",
+                    "details": f"No graph named '{graph_name}' exists",
                 },
             )
 
-        dataset_raw = datasets_raw[0]  # Should only be one dataset
+        dataset_raw = datasets_raw[0]  # Should only be one graph
 
-        # Convert to response format (same logic as list_datasets)
+        # Convert to response format (same logic as list_graphs)
         vertices = []
         for vertex_raw in dataset_raw.get("vertices", []):
             vertices.append(
@@ -452,7 +455,7 @@ async def get_dataset_info(
                 )
             )
 
-        return DatasetInfo(name=dataset_raw["name"], vertices=vertices, edges=edges)
+        return GraphInfo(name=dataset_raw["name"], vertices=vertices, edges=edges)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -473,12 +476,12 @@ async def get_dataset_info(
             status_code=500,
             detail={
                 "error": "XGT_OPERATION_ERROR",
-                "message": f"Failed to retrieve dataset '{dataset_name}'",
+                "message": f"Failed to retrieve graph '{graph_name}'",
                 "details": str(e),
             },
         )
     except Exception as e:
-        logger.error(f"Unexpected error getting dataset {dataset_name}: {e}")
+        logger.error(f"Unexpected error getting graph {graph_name}: {e}")
         raise HTTPException(
             status_code=500,
             detail={

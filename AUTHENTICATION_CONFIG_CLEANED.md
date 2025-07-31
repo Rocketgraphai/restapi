@@ -98,7 +98,7 @@ JWT_EXPIRY_SECONDS=3600  # 1 hour
 - `POST /api/v1/auth/test-connection` - Test XGT connection
 
 ### **Protected Endpoints** (All require authentication)
-- `GET /api/v1/public/datasets/*` - Dataset operations
+- `GET /api/v1/public/graphs/*` - Graph operations
 - `GET /api/v1/public/frames/*` - Frame operations  
 - `GET|POST /api/v1/public/query/*` - Query operations
 

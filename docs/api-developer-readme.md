@@ -23,15 +23,15 @@ curl -X POST "https://api.rocketgraph.com/api/v1/auth/xgt/basic" \
   -d '{"username": "your-username", "password": "your-password"}'
 ```
 
-### 2. List Datasets
+### 2. List Graphs
 ```bash
-curl -X GET "https://api.rocketgraph.com/api/v1/public/datasets" \
+curl -X GET "https://api.rocketgraph.com/api/v1/public/graphs" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### 3. Execute Query
 ```bash
-curl -X POST "https://api.rocketgraph.com/api/v1/public/datasets/your-dataset/query" \
+curl -X POST "https://api.rocketgraph.com/api/v1/public/graphs/your-graph/query" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"query": "MATCH (n) RETURN n LIMIT 5", "format": "json"}'
@@ -54,9 +54,9 @@ The API uses JWT Bearer tokens obtained by authenticating with your XGT credenti
 |----------|----------|---------|
 | **Auth** | `POST /auth/xgt/basic` | Authenticate with XGT credentials |
 | **Health** | `GET /public/health` | System health and status |
-| **Datasets** | `GET /public/datasets` | List available datasets |
+| **Graphs** | `GET /public/graphs` | List available graphs |
 | **Frames** | `GET /public/frames` | List available frames |
-| **Query** | `POST /public/datasets/{name}/query` | Execute Cypher queries |
+| **Query** | `POST /public/graphs/{name}/query` | Execute Cypher queries |
 | **Results** | `GET /public/query/{job_id}/results` | Get query results |
 
 ## 🛠 Development Tools
@@ -111,7 +111,7 @@ token = response.json()["access_token"]
 # Execute query
 headers = {"Authorization": f"Bearer {token}"}
 query_job = requests.post(
-    "https://api.rocketgraph.com/api/v1/public/datasets/your-dataset/query",
+    "https://api.rocketgraph.com/api/v1/public/graphs/your-graph/query",
     json={"query": "MATCH (n) RETURN n LIMIT 5", "format": "json"},
     headers=headers
 ).json()
@@ -141,7 +141,7 @@ const authResponse = await api.post('/auth/xgt/basic', {
 api.defaults.headers.common['Authorization'] = `Bearer ${authResponse.data.access_token}`;
 
 // Execute query
-const queryJob = await api.post('/public/datasets/your-dataset/query', {
+const queryJob = await api.post('/public/graphs/your-graph/query', {
   query: 'MATCH (n) RETURN n LIMIT 5',
   format: 'json'
 });
@@ -200,7 +200,7 @@ Common HTTP status codes:
 - Don't log sensitive credentials
 
 ### Performance
-- Use pagination for large datasets
+- Use pagination for large graphs
 - Implement client-side caching
 - Set appropriate query timeouts
 - Monitor API usage

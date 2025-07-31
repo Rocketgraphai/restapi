@@ -303,7 +303,7 @@ class TestRunner:
             sys.executable,
             "-m",
             "pytest",
-            "tests/integration/test_xgt_datasets.py",
+            "tests/integration/test_xgt_graphs.py",
             "--junitxml=xgt-integration-junit.xml",
             "-v",
             "-s",

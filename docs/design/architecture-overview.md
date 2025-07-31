@@ -33,7 +33,7 @@ rocketgraph-public-api/          # New separate repo
 │   ├── api/v1/
 │   │   ├── __init__.py
 │   │   ├── auth.py              # API key authentication
-│   │   ├── datasets.py          # Dataset operations
+│   │   ├── graphs.py            # Graph operations
 │   │   ├── queries.py           # Query operations
 │   │   ├── schemas.py           # Schema operations
 │   │   └── middleware.py        # Rate limiting, validation

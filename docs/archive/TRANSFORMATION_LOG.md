@@ -22,7 +22,7 @@ This document captures the complete conversation and transformation process from
 ### Shareable vs Non-Shareable Components
 
 **🟢 Highly Shareable (60-70% of business logic):**
-- XGT schema operations, dataset management, query execution
+- XGT schema operations, graph management, query execution
 - Schema inference algorithms and graph schema generation
 - LLM factory patterns and provider interfaces
 - Configuration management architecture
@@ -78,8 +78,8 @@ This document captures the complete conversation and transformation process from
 
 ### Phase 2: Core Features (Weeks 3-4) 
 1. Extract schema inference - Adapt `infer_schema.py` for stateless operation
-2. Implement dataset operations - GET /datasets, POST /datasets
-3. Add query execution - POST /datasets/{id}/query endpoints
+2. Implement graph operations - GET /graphs, POST /graphs
+3. Add query execution - POST /graphs/{id}/query endpoints
 4. Basic rate limiting - Redis-based rate limiter
 
 ### Phase 3: AI Integration (Weeks 5-6)
@@ -197,7 +197,7 @@ def protected_endpoint():
     username = get_jwt_identity()
 
 # AFTER (Public API - API keys, coming in Phase 2)
-@require_api_key(scopes=['datasets:read'])
+@require_api_key(scopes=['graphs:read'])
 async def protected_endpoint(auth: AuthContext = Depends(get_auth_context)):
     org_id = auth.organization_id
 ```
@@ -291,13 +291,13 @@ The foundation is complete and tested. Next phase will add:
    - JWT-based API key validation
    - Scope-based authorization
 
-2. **Core Dataset Endpoints**
-   - GET /api/v1/public/datasets
-   - GET /api/v1/public/datasets/{id}
-   - POST /api/v1/public/datasets
+2. **Core Graph Endpoints**
+   - GET /api/v1/public/graphs
+   - GET /api/v1/public/graphs/{id}
+   - POST /api/v1/public/graphs
 
 3. **Query Execution**
-   - POST /api/v1/public/datasets/{id}/query
+   - POST /api/v1/public/graphs/{id}/query
    - GET /api/v1/public/query/{job_id}/status
    - GET /api/v1/public/query/{job_id}/results
 

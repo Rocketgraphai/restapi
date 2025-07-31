@@ -168,21 +168,21 @@ GET /public/version
 
 Detailed version information for API, XGT server, and SDK components.
 
-### Datasets
+### Graphs
 
-#### List All Datasets
+#### List All Graphs
 ```http
-GET /public/datasets
+GET /public/graphs
 Authorization: Bearer your-jwt-token
 ```
 
 **Query Parameters:**
-- `include_empty` (boolean, default: false) - Include datasets with no frames
+- `include_empty` (boolean, default: false) - Include graphs with no frames
 
 **Response:**
 ```json
 {
-  "datasets": [
+  "graphs": [
     {
       "name": "ecommerce",
       "vertices": [
@@ -214,15 +214,15 @@ Authorization: Bearer your-jwt-token
 }
 ```
 
-#### Get Specific Dataset
+#### Get Specific Graph
 ```http
-GET /public/datasets/{dataset_name}
+GET /public/graphs/{graph_name}
 Authorization: Bearer your-jwt-token
 ```
 
-#### Get Dataset Schema
+#### Get Graph Schema
 ```http
-GET /public/datasets/{dataset_name}/schema
+GET /public/graphs/{graph_name}/schema
 Authorization: Bearer your-jwt-token
 ```
 
@@ -335,7 +335,7 @@ Authorization: Bearer your-jwt-token
 
 #### Execute Cypher Query
 ```http
-POST /public/datasets/{dataset_name}/query
+POST /public/graphs/{graph_name}/query
 Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
@@ -355,7 +355,7 @@ Content-Type: application/json
   "job_id": 12345,
   "status": "completed",
   "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
-  "dataset_name": "ecommerce",
+  "graph_name": "ecommerce",
   "submitted_at": "2024-01-15T10:30:00Z",
   "estimated_completion": null
 }
@@ -421,7 +421,7 @@ Authorization: Bearer your-jwt-token
 - `page` (integer, default: 1) - Page number
 - `per_page` (integer, default: 50, max: 200) - Jobs per page
 - `status` (string) - Filter by status
-- `dataset_name` (string) - Filter by dataset
+- `graph_name` (string) - Filter by graph
 
 **Response:**
 ```json
@@ -431,7 +431,7 @@ Authorization: Bearer your-jwt-token
       "job_id": 12345,
       "status": "completed",
       "query": "MATCH (c:Customer) RETURN c.name",
-      "dataset_name": "ecommerce",
+      "graph_name": "ecommerce",
       "submitted_at": "2024-01-15T10:30:00Z",
       "start_time": 1642248000.0,
       "end_time": 1642248045.0,
@@ -474,16 +474,16 @@ class RocketGraphAPI:
             "Content-Type": "application/json"
         }
     
-    def list_datasets(self):
-        """Get all datasets"""
+    def list_graphs(self):
+        """Get all graphs"""
         response = requests.get(
-            f"{self.base_url}/public/datasets",
+            f"{self.base_url}/public/graphs",
             headers=self._headers()
         )
         response.raise_for_status()
         return response.json()
     
-    def execute_query(self, dataset_name, query, parameters=None):
+    def execute_query(self, graph_name, query, parameters=None):
         """Execute a Cypher query"""
         payload = {
             "query": query,
@@ -493,7 +493,7 @@ class RocketGraphAPI:
             payload["parameters"] = parameters
             
         response = requests.post(
-            f"{self.base_url}/public/datasets/{dataset_name}/query",
+            f"{self.base_url}/public/graphs/{graph_name}/query",
             json=payload,
             headers=self._headers()
         )
@@ -513,9 +513,9 @@ class RocketGraphAPI:
 # Usage example
 api = RocketGraphAPI("http://localhost:8000/api/v1", "your-username", "your-password")
 
-# List datasets
-datasets = api.list_datasets()
-print(f"Found {datasets['total_count']} datasets")
+# List graphs
+graphs = api.list_graphs()
+print(f"Found {graphs['total_count']} graphs")
 
 # Execute query
 query_job = api.execute_query(
@@ -557,17 +557,17 @@ class RocketGraphAPI {
         this.client.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
     }
 
-    async listDatasets() {
-        const response = await this.client.get('/public/datasets');
+    async listGraphs() {
+        const response = await this.client.get('/public/graphs');
         return response.data;
     }
 
-    async executeQuery(datasetName, query, parameters = null) {
+    async executeQuery(graphName, query, parameters = null) {
         const payload = { query, format: 'json' };
         if (parameters) payload.parameters = parameters;
 
         const response = await this.client.post(
-            `/public/datasets/${datasetName}/query`,
+            `/public/graphs/${graphName}/query`,
             payload
         );
         return response.data;
@@ -597,9 +597,9 @@ class RocketGraphAPI {
     try {
         await api.authenticate('your-username', 'your-password');
         
-        // List datasets
-        const datasets = await api.listDatasets();
-        console.log(`Found ${datasets.total_count} datasets`);
+        // List graphs
+        const graphs = await api.listGraphs();
+        console.log(`Found ${graphs.total_count} graphs`);
         
         // Execute query
         const queryJob = await api.executeQuery(
@@ -635,16 +635,16 @@ TOKEN=$(curl -s -X POST "http://localhost:8000/api/v1/auth/xgt/basic" \
 echo "Token: $TOKEN"
 ```
 
-#### List Datasets
+#### List Graphs
 ```bash
-curl -X GET "http://localhost:8000/api/v1/public/datasets" \
+curl -X GET "http://localhost:8000/api/v1/public/graphs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 ```
 
 #### Execute Query
 ```bash
-JOB_ID=$(curl -s -X POST "http://localhost:8000/api/v1/public/datasets/ecommerce/query" \
+JOB_ID=$(curl -s -X POST "http://localhost:8000/api/v1/public/graphs/ecommerce/query" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -723,7 +723,7 @@ curl -X GET "http://localhost:8000/api/v1/public/query/$JOB_ID/results" \
 - Validate data types before processing
 - Handle null/empty values gracefully
 - Implement proper error recovery
-- Use streaming for large datasets
+- Use streaming for large graphs
 
 ### Security
 - Always use HTTPS in production

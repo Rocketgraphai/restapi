@@ -43,8 +43,8 @@ class TestAPIEndpointsIntegration:
         app.dependency_overrides.clear()
 
     @patch("app.utils.xgt_operations.xgt")
-    def test_datasets_endpoint_integration(self, mock_xgt, client):
-        """Test datasets endpoint with mocked XGT but real API stack."""
+    def test_graphs_endpoint_integration(self, mock_xgt, client):
+        """Test graphs endpoint with mocked XGT but real API stack."""
         # Mock XGT connection and operations
         mock_connection = Mock()
         mock_connection.get_namespaces.return_value = ["admin", "test_namespace"]
@@ -56,19 +56,19 @@ class TestAPIEndpointsIntegration:
         mock_xgt.BasicAuth.return_value = Mock()
 
         # Test the full API request
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         assert response.status_code == 200
         data = response.json()
 
-        assert "datasets" in data
+        assert "graphs" in data
         assert "total_count" in data
-        assert isinstance(data["datasets"], list)
+        assert isinstance(data["graphs"], list)
         assert data["total_count"] == 0  # No frames in mock
 
     @patch("app.utils.xgt_operations.xgt")
-    def test_datasets_with_data_integration(self, mock_xgt, client):
-        """Test datasets endpoint with mock data."""
+    def test_graphs_with_data_integration(self, mock_xgt, client):
+        """Test graphs endpoint with mock data."""
         # Mock XGT with sample data
         mock_connection = Mock()
         mock_connection.get_namespaces.return_value = ["admin"]
@@ -107,27 +107,27 @@ class TestAPIEndpointsIntegration:
         mock_xgt.BasicAuth.return_value = Mock()
 
         # Test the API
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         assert response.status_code == 200
         data = response.json()
 
         assert data["total_count"] == 1
-        assert len(data["datasets"]) == 1
+        assert len(data["graphs"]) == 1
 
-        dataset = data["datasets"][0]
-        assert dataset["name"] == "admin"
-        assert len(dataset["vertices"]) == 1
-        assert len(dataset["edges"]) == 1
+        graph = data["graphs"][0]
+        assert graph["name"] == "admin"
+        assert len(graph["vertices"]) == 1
+        assert len(graph["edges"]) == 1
 
         # Check vertex data
-        vertex = dataset["vertices"][0]
+        vertex = graph["vertices"][0]
         assert vertex["name"] == "users"
         assert vertex["num_rows"] == 100
         assert vertex["key"] == "id"
 
         # Check edge data
-        edge = dataset["edges"][0]
+        edge = graph["edges"][0]
         assert edge["name"] == "friendships"
         assert edge["source_frame"] == "users"
         assert edge["target_frame"] == "users"
@@ -153,7 +153,7 @@ class TestAPIEndpointsIntegration:
     @patch("app.utils.xgt_operations.xgt", None)
     def test_xgt_unavailable_integration(self, client):
         """Test API behavior when XGT is unavailable."""
-        response = client.get("/api/v1/public/datasets")
+        response = client.get("/api/v1/public/graphs")
 
         # Should return 500 when XGT library is not available (internal server error)
         assert response.status_code == 500

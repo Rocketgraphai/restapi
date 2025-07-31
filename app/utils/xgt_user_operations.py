@@ -1,8 +1,16 @@
 """
 User-specific XGT operations for pass-through authentication.
 
-Replaces the admin-credential XGT operations with user-specific connections
-that use each authenticated user's own XGT credentials.
+This module provides XGT database operations using individual user credentials
+rather than shared admin credentials. Each instance is tied to a specific user's
+authentication context and provides access to their authorized data.
+
+Key Features:
+- Pass-through authentication with XGT
+- Multiple auth methods: Basic, PKI, Proxy PKI
+- Automatic schema detection and conversion
+- MCP (Model Context Protocol) integration
+- Robust error handling and logging
 """
 
 from contextlib import contextmanager
@@ -19,6 +27,11 @@ except ImportError:
     xgt = None
 
 logger = logging.getLogger(__name__)
+
+# Constants
+DEFAULT_FRAME_LIMIT = 1000
+DEFAULT_QUERY_TIMEOUT = 300
+DATASET_NAME_SEPARATOR = "__"
 
 
 class UserXGTOperations:
@@ -297,7 +310,7 @@ class UserXGTOperations:
                         "name": frame.name,
                         "type": self._determine_frame_type(frame),
                         "num_rows": getattr(frame, "num_rows", 0),
-                        "schema": self._get_frame_schema(frame),
+                        "schema": self._convert_schema_to_list(frame),
                     }
                     frame_list.append(frame_info)
 
@@ -319,81 +332,139 @@ class UserXGTOperations:
         else:
             return "unknown"
 
-    def _get_frame_schema(self, frame) -> list:
-        """Get schema information for a frame."""
+    def _extract_frame_schema_properties(self, frame) -> list:
+        """
+        Extract schema properties from a frame for detailed schema endpoints.
+
+        Returns list of property dictionaries with name, type, leaf_type, depth.
+        """
         try:
-            schema = []
+            properties = []
             if hasattr(frame, "schema"):
                 for column in frame.schema:
-                    if hasattr(column, "name") and hasattr(column, "type"):
-                        schema.append({"name": column.name, "type": str(column.type)})
-            return schema
+                    if isinstance(column, (list, tuple)) and len(column) >= 2:
+                        # Handle XGT schema format: [name, type, leaf_type, depth]
+                        prop_info = {
+                            "name": str(column[0]),
+                            "type": str(column[1]),
+                            "leaf_type": str(column[2]) if len(column) >= 3 else str(column[1]),
+                            "depth": int(column[3]) if len(column) >= 4 else 1,
+                        }
+                        properties.append(prop_info)
+                    elif hasattr(column, "name") and hasattr(column, "type"):
+                        # Fallback for object-based schema
+                        prop_info = {
+                            "name": column.name,
+                            "type": str(column.type),
+                            "leaf_type": str(column.type),
+                            "depth": 1,
+                        }
+                        properties.append(prop_info)
+            return properties
         except Exception as e:
-            logger.warning(f"Could not get frame schema: {e}")
+            logger.warning(f"Could not extract frame schema properties: {e}")
             return []
+
+    def _extract_frame_attributes(self, frame) -> dict:
+        """
+        Extract common frame attributes (source, target, key) with robust attribute detection.
+
+        Returns dictionary with source_frame, target_frame, source_key, target_key, key.
+        """
+        try:
+            # Extract source and target frame names
+            source_frame = getattr(frame, "source_name", None) or getattr(frame, "source_frame", None) or getattr(frame, "source", None)
+            target_frame = getattr(frame, "target_name", None) or getattr(frame, "target_frame", None) or getattr(frame, "target", None)
+
+            # Extract source and target keys
+            source_key = getattr(frame, "source_key", None) or getattr(frame, "source_column", None) or "id"
+            target_key = getattr(frame, "target_key", None) or getattr(frame, "target_column", None) or "id"
+
+            # Extract primary key
+            key = getattr(frame, "key", None) or self._get_primary_key(frame)
+
+            return {
+                "source_frame": str(source_frame) if source_frame else None,
+                "target_frame": str(target_frame) if target_frame else None,
+                "source_key": str(source_key),
+                "target_key": str(target_key),
+                "key": key
+            }
+        except Exception as e:
+            logger.warning(f"Could not extract frame attributes: {e}")
+            return {
+                "source_frame": None,
+                "target_frame": None,
+                "source_key": "id",
+                "target_key": "id",
+                "key": None
+            }
 
     def datasets_info(self, dataset_name: Optional[str] = None) -> list:
         """
-        Get information about datasets (namespaces) accessible to the user.
+        Get information about datasets (graphs) within the user's namespace.
+        Each dataset represents a graph with its own collection of frames.
 
         Args:
             dataset_name: Optional specific dataset name to retrieve
 
         Returns:
-            List of dataset information dictionaries
+            List of dataset information dictionaries, each representing a graph
         """
         try:
             with self.connection() as conn:
-                # For user connections, we typically work within user's namespace
-                user_namespace = self.get_user_namespace()
-
-                # If specific dataset requested and it's not user's namespace, return empty
-                if dataset_name and dataset_name != user_namespace:
-                    return []
-
-                # Get frames from user's namespace
+                # Get all frames from user's namespace
                 vertex_frames = list(conn.get_frames(frame_type="Vertex"))
                 edge_frames = list(conn.get_frames(frame_type="Edge"))
                 table_frames = list(conn.get_frames(frame_type="Table"))
 
-                # Build dataset info structure
-                dataset_info = {"name": user_namespace, "vertices": [], "edges": [], "tables": []}
+                # Group frames by dataset/graph name
+                # This extracts the dataset name from frame names (assumes naming convention)
+                datasets = {}
 
-                # Process vertex frames
+                # Process vertex frames to identify datasets
                 for frame in vertex_frames:
+                    dataset_name_extracted = self._extract_dataset_name(frame.name)
+                    if dataset_name_extracted not in datasets:
+                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
+
+                    attributes = self._extract_frame_attributes(frame)
                     frame_info = {
                         "name": frame.name,
                         "schema": self._convert_schema_to_list(frame),
                         "num_rows": getattr(frame, "num_rows", 0),
-                        "create_rows": True,  # User can typically create rows in their namespace
-                        "delete_frame": True,  # User can typically delete their frames
-                        "key": getattr(frame, "key", None) or self._get_primary_key(frame),
+                        "create_rows": True,
+                        "delete_frame": True,
+                        "key": attributes["key"],
                     }
-                    dataset_info["vertices"].append(frame_info)
+                    datasets[dataset_name_extracted]["vertices"].append(frame_info)
 
                 # Process edge frames
                 for frame in edge_frames:
-                    # Try different possible attribute names for source/target
-                    source_frame = getattr(frame, "source_name", None) or getattr(frame, "source_frame", None) or getattr(frame, "source", None) or "unknown_source"
-                    target_frame = getattr(frame, "target_name", None) or getattr(frame, "target_frame", None) or getattr(frame, "target", None) or "unknown_target"
-                    source_key = getattr(frame, "source_key", None) or getattr(frame, "source_column", None) or "id"
-                    target_key = getattr(frame, "target_key", None) or getattr(frame, "target_column", None) or "id"
+                    dataset_name_extracted = self._extract_dataset_name(frame.name)
+                    if dataset_name_extracted not in datasets:
+                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
 
+                    attributes = self._extract_frame_attributes(frame)
                     frame_info = {
                         "name": frame.name,
                         "schema": self._convert_schema_to_list(frame),
                         "num_rows": getattr(frame, "num_rows", 0),
                         "create_rows": True,
                         "delete_frame": True,
-                        "source_frame": str(source_frame),
-                        "source_key": str(source_key),
-                        "target_frame": str(target_frame),
-                        "target_key": str(target_key),
+                        "source_frame": attributes["source_frame"] or "unknown_source",
+                        "source_key": attributes["source_key"],
+                        "target_frame": attributes["target_frame"] or "unknown_target",
+                        "target_key": attributes["target_key"],
                     }
-                    dataset_info["edges"].append(frame_info)
+                    datasets[dataset_name_extracted]["edges"].append(frame_info)
 
                 # Process table frames
                 for frame in table_frames:
+                    dataset_name_extracted = self._extract_dataset_name(frame.name)
+                    if dataset_name_extracted not in datasets:
+                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
+
                     frame_info = {
                         "name": frame.name,
                         "schema": self._convert_schema_to_list(frame),
@@ -401,25 +472,77 @@ class UserXGTOperations:
                         "create_rows": True,
                         "delete_frame": True,
                     }
-                    dataset_info["tables"].append(frame_info)
+                    datasets[dataset_name_extracted]["tables"].append(frame_info)
 
-                return [dataset_info]
+                # Filter by specific dataset if requested
+                if dataset_name:
+                    return [datasets[dataset_name]] if dataset_name in datasets else []
+
+                # Return all datasets as a list
+                return list(datasets.values())
 
         except Exception as e:
             logger.error(f"Failed to get datasets info: {e}")
             raise XGTOperationError(f"Datasets info retrieval failed: {str(e)}")
 
+    def _extract_dataset_name(self, frame_name: str) -> str:
+        """
+        Extract dataset/graph name from frame name using naming convention.
+
+        Naming convention: DatasetName__FrameName
+        Examples:
+        - AnonCyber__Devices -> AnonCyber
+        - FinTrans__Accounts -> FinTrans
+        - SimpleFrameName -> SimpleFrameName (fallback)
+
+        Args:
+            frame_name: Full frame name
+
+        Returns:
+            Dataset/graph name
+        """
+        if '__' in frame_name:
+            return frame_name.split('__')[0]
+        else:
+            # Fallback: if no separator, treat entire name as dataset name
+            return frame_name
+
     def _convert_schema_to_list(self, frame) -> list:
-        """Convert frame schema to list format expected by API."""
+        """
+        Convert frame schema to simple list format expected by basic API endpoints.
+
+        Returns schema as [["column_name", "column_type"], ...] format.
+        """
         try:
             schema_list = []
-            if hasattr(frame, "schema"):
+            if hasattr(frame, "schema") and frame.schema:
+                # XGT schema is typically a list of tuples/lists
                 for column in frame.schema:
+                    if isinstance(column, (list, tuple)) and len(column) >= 2:
+                        # Handle case where schema is already a list of [name, type] tuples (most common)
+                        schema_list.append([str(column[0]), str(column[1])])
+                    elif hasattr(column, "name") and hasattr(column, "type"):
+                        schema_list.append([column.name, str(column.type)])
+                    elif hasattr(column, "name") and hasattr(column, "data_type"):
+                        schema_list.append([column.name, str(column.data_type)])
+
+            elif hasattr(frame, "get_schema"):
+                # Alternative: get_schema() method
+                schema_info = frame.get_schema()
+                if isinstance(schema_info, list):
+                    for item in schema_info:
+                        if isinstance(item, (list, tuple)) and len(item) >= 2:
+                            schema_list.append([str(item[0]), str(item[1])])
+
+            elif hasattr(frame, "columns"):
+                # Alternative: columns attribute
+                for column in frame.columns:
                     if hasattr(column, "name") and hasattr(column, "type"):
                         schema_list.append([column.name, str(column.type)])
+
             return schema_list
         except Exception as e:
-            logger.warning(f"Could not convert frame schema: {e}")
+            logger.error(f"Could not convert frame schema for {getattr(frame, 'name', 'unknown')}: {e}")
             return []
 
     def _get_primary_key(self, frame) -> Optional[str]:
@@ -525,6 +648,51 @@ class UserXGTOperations:
             logger.error(f"Failed to get frame data: {e}")
             raise XGTOperationError(f"Frame data retrieval failed: {str(e)}")
 
+    def format_results_for_mcp(self, results: list, columns: list = None, execution_time_ms: float = None) -> str:
+        """
+        Format query results for optimal Claude consumption via MCP.
+
+        Args:
+            results: Query result data
+            columns: Optional column names
+            execution_time_ms: Optional execution time in milliseconds
+
+        Returns:
+            Formatted string optimized for Claude understanding
+        """
+        from ..core.mcp_formatters import MCPResultFormatter
+        return MCPResultFormatter.format_query_results(results, columns, execution_time_ms)
+
+    def get_schema_for_mcp(self, dataset_name: str = None) -> str:
+        """
+        Get schema information formatted for Claude via MCP.
+
+        Args:
+            dataset_name: Optional dataset name, defaults to user namespace
+
+        Returns:
+            Formatted schema string optimized for Claude understanding
+        """
+        schema = self.get_schema(dataset_name or self.get_user_namespace())
+        from ..core.mcp_formatters import MCPResultFormatter
+        return MCPResultFormatter.format_schema_info(schema)
+
+    def get_frame_data_for_mcp(self, frame_name: str, offset: int = 0, limit: int = 100) -> str:
+        """
+        Get frame data formatted for Claude via MCP.
+
+        Args:
+            frame_name: Name of the frame to retrieve data from
+            offset: Starting offset for pagination (default: 0)
+            limit: Maximum number of rows to return (default: 100)
+
+        Returns:
+            Formatted frame data string optimized for Claude understanding
+        """
+        frame_data = self.get_frame_data(frame_name, offset, limit)
+        from ..core.mcp_formatters import MCPResultFormatter
+        return MCPResultFormatter.format_frame_data(frame_data)
+
     def get_schema(self, dataset_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False) -> dict[str, Any]:
         """
         Get schema information for a dataset.
@@ -541,55 +709,53 @@ class UserXGTOperations:
             with self.connection() as conn:
                 user_namespace = self.get_user_namespace()
 
-                # Only allow access to user's own namespace
-                if dataset_name != user_namespace:
-                    raise XGTOperationError(f"Access denied to dataset '{dataset_name}'")
+                # Note: Removed restrictive namespace check - let XGT handle access control
+                # If the user can access the dataset via other endpoints, they should be able
+                # to get its schema too. XGT will enforce proper access control.
 
-                # Get frames
-                vertex_frames = list(conn.get_frames(frame_type="Vertex"))
-                edge_frames = list(conn.get_frames(frame_type="Edge"))
+                # Get all frames from user's accessible namespace
+                all_vertex_frames = list(conn.get_frames(frame_type="Vertex"))
+                all_edge_frames = list(conn.get_frames(frame_type="Edge"))
+
+                # Filter frames for the specific dataset using the same logic as datasets_info
+                vertex_frames = []
+                edge_frames = []
+
+                for frame in all_vertex_frames:
+                    frame_dataset = self._extract_dataset_name(frame.name)
+                    if frame_dataset == dataset_name:
+                        vertex_frames.append(frame)
+
+                for frame in all_edge_frames:
+                    frame_dataset = self._extract_dataset_name(frame.name)
+                    if frame_dataset == dataset_name:
+                        edge_frames.append(frame)
 
                 # Build nodes schema
                 nodes = []
                 for frame in vertex_frames:
-                    properties = []
-                    if hasattr(frame, "schema"):
-                        for column in frame.schema:
-                            if hasattr(column, "name") and hasattr(column, "type"):
-                                prop_info = {
-                                    "name": column.name,
-                                    "type": str(column.type),
-                                    "leaf_type": str(column.type),
-                                    "depth": 1,
-                                }
-                                properties.append(prop_info)
+                    properties = self._extract_frame_schema_properties(frame)
+                    attributes = self._extract_frame_attributes(frame)
 
                     node_name = f"{user_namespace}__{frame.name}" if fully_qualified else frame.name
                     node_info = {
                         "name": node_name,
                         "properties": properties,
-                        "key": self._get_primary_key(frame) or "id",
+                        "key": attributes["key"] or "id",
                     }
                     nodes.append(node_info)
 
                 # Build edges schema
                 edges = []
                 for frame in edge_frames:
-                    properties = []
-                    if hasattr(frame, "schema"):
-                        for column in frame.schema:
-                            if hasattr(column, "name") and hasattr(column, "type"):
-                                prop_info = {
-                                    "name": column.name,
-                                    "type": str(column.type),
-                                    "leaf_type": str(column.type),
-                                    "depth": 1,
-                                }
-                                properties.append(prop_info)
+                    properties = self._extract_frame_schema_properties(frame)
+                    attributes = self._extract_frame_attributes(frame)
 
                     edge_name = f"{user_namespace}__{frame.name}" if fully_qualified else frame.name
-                    source_name = getattr(frame, "source", "unknown")
-                    target_name = getattr(frame, "target", "unknown")
+
+                    # Handle source and target names with proper qualification
+                    source_name = attributes["source_frame"] or "unknown"
+                    target_name = attributes["target_frame"] or "unknown"
 
                     if fully_qualified:
                         source_name = f"{user_namespace}__{source_name}" if source_name != "unknown" else source_name
@@ -600,8 +766,8 @@ class UserXGTOperations:
                         "properties": properties,
                         "source": source_name,
                         "target": target_name,
-                        "source_key": getattr(frame, "source_key", "id"),
-                        "target_key": getattr(frame, "target_key", "id"),
+                        "source_key": attributes["source_key"],
+                        "target_key": attributes["target_key"],
                     }
                     edges.append(edge_info)
 

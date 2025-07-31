@@ -75,14 +75,14 @@ class RequestValidator:
                 raise SecurityError("Potential injection attempt detected")
     
     @staticmethod
-    def sanitize_dataset_name(name: str) -> str:
-        """Sanitize dataset name to prevent path traversal"""
+    def sanitize_graph_name(name: str) -> str:
+        """Sanitize graph name to prevent path traversal"""
         # Remove dangerous characters
         clean_name = re.sub(r'[^\w\-_.]', '', name)
         
         # Prevent path traversal
         if '..' in clean_name or clean_name.startswith('/'):
-            raise SecurityError("Invalid dataset name")
+            raise SecurityError("Invalid graph name")
         
         return clean_name
 ```
@@ -537,7 +537,7 @@ def track_data_access(self, query_result, auth_context):
         'timestamp': datetime.utcnow().isoformat(),
         'organization_id': auth_context.organization_id,
         'api_key_id': auth_context.api_key.id,
-        'dataset_ids': self.extract_dataset_ids(query_result),
+        'graph_ids': self.extract_graph_ids(query_result),
         'record_count': len(query_result.rows),
         'data_types': self.identify_data_types(query_result),
         'pii_detected': self.scan_for_pii(query_result),

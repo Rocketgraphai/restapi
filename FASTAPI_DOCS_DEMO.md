@@ -62,7 +62,7 @@ Request Body:
 
 ### 3. Updated Public Endpoints
 
-All existing endpoints in the **"query"**, **"datasets"**, and **"frames"** sections will show:
+All existing endpoints in the **"query"**, **"graphs"**, and **"frames"** sections will show:
 
 - 🔒 **Lock icon** indicating authentication required
 - **Security: BearerAuth** requirement
@@ -93,7 +93,7 @@ All existing endpoints in the **"query"**, **"datasets"**, and **"frames"** sect
 ### Step 3: Test Protected Endpoints
 Now you can test any endpoint with the 🔒 icon:
 - `/api/v1/public/query/{job_id}/results`
-- `/api/v1/public/datasets`
+- `/api/v1/public/graphs`
 - `/api/v1/auth/me`
 
 ## Visual Changes in Swagger UI
@@ -105,10 +105,10 @@ Now you can test any endpoint with the 🔒 icon:
 
 📁 query  
   GET /api/v1/public/query/{job_id}/results    [No lock icon]
-  POST /api/v1/public/datasets/{dataset_name}/query
+  POST /api/v1/public/graphs/{graph_name}/query
 
-📁 datasets
-  GET /api/v1/public/datasets
+📁 graphs
+  GET /api/v1/public/graphs
 ```
 
 ### After (Pass-Through Auth)
@@ -128,10 +128,10 @@ Now you can test any endpoint with the 🔒 icon:
 
 📁 query
   GET  /api/v1/public/query/{job_id}/results    🔒 [Now requires auth]
-  POST /api/v1/public/datasets/{dataset_name}/query  🔒 [Now requires auth]
+  POST /api/v1/public/graphs/{graph_name}/query  🔒 [Now requires auth]
 
-📁 datasets  
-  GET /api/v1/public/datasets             🔒 [Now requires auth]
+📁 graphs  
+  GET /api/v1/public/graphs             🔒 [Now requires auth]
 
 📁 frames
   GET /api/v1/public/frames               🔒 [Now requires auth]
