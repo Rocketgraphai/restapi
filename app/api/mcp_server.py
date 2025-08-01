@@ -35,6 +35,9 @@ class RocketgraphMCPServer:
         # Session cleanup tracking
         self._session_created_times: Dict[str, float] = {}
         
+        # Session-level graph context tracking
+        self._session_graph_contexts: Dict[str, str] = {}
+        
         # Create MCP server instance
         self.server = Server("rocketgraph")
         
@@ -83,7 +86,7 @@ class RocketgraphMCPServer:
                 ),
                 types.Tool(
                     name="rocketgraph_query",
-                    description="Execute a Cypher query against the Rocketgraph database",
+                    description="Execute a Cypher query against a specific graph or dataset",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -101,6 +104,10 @@ class RocketgraphMCPServer:
                                 "type": "string",
                                 "description": "Session ID from authentication",
                                 "pattern": "^[a-zA-Z0-9-_]+$"
+                            },
+                            "graph_name": {
+                                "type": "string",
+                                "description": "Optional graph/dataset name to scope the query to"
                             },
                             "limit": {
                                 "type": "integer",
@@ -131,9 +138,9 @@ class RocketgraphMCPServer:
                                 "type": "string",
                                 "description": "Session ID from authentication"
                             },
-                            "dataset_name": {
+                            "graph_name": {
                                 "type": "string",
-                                "description": "Optional dataset name to get schema for"
+                                "description": "Optional graph name to get schema for"
                             },
                             "include_sample_data": {
                                 "type": "boolean",
@@ -162,7 +169,7 @@ class RocketgraphMCPServer:
                 ),
                 types.Tool(
                     name="rocketgraph_frame_data",
-                    description="Get data from a specific frame/table in the graph",
+                    description="Get data from a specific frame/table in a graph",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -173,6 +180,10 @@ class RocketgraphMCPServer:
                             "frame_name": {
                                 "type": "string",
                                 "description": "Name of the frame to get data from"
+                            },
+                            "graph_name": {
+                                "type": "string",
+                                "description": "Optional graph/dataset name (uses default if not specified)"
                             },
                             "offset": {
                                 "type": "integer",
@@ -189,6 +200,25 @@ class RocketgraphMCPServer:
                             }
                         },
                         "required": ["session_id", "frame_name"],
+                        "additionalProperties": False
+                    }
+                ),
+                types.Tool(
+                    name="rocketgraph_use_graph",
+                    description="Set the default graph context for subsequent operations",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "session_id": {
+                                "type": "string",
+                                "description": "Session ID from authentication"
+                            },
+                            "graph_name": {
+                                "type": "string",
+                                "description": "Graph name to use as default context"
+                            }
+                        },
+                        "required": ["session_id", "graph_name"],
                         "additionalProperties": False
                     }
                 )
@@ -211,6 +241,8 @@ class RocketgraphMCPServer:
                     return await self._handle_list_graphs(arguments)
                 elif name == "rocketgraph_frame_data":
                     return await self._handle_frame_data(arguments)
+                elif name == "rocketgraph_use_graph":
+                    return await self._handle_use_graph(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
                     
@@ -273,6 +305,7 @@ You can now execute queries using this session ID. The session will automaticall
             session_id = arguments["session_id"]
             cypher_query = arguments["cypher"]
             parameters = arguments.get("parameters", {})
+            graph_name = arguments.get("graph_name")
             limit = arguments.get("limit", 100)
             timeout = arguments.get("timeout", 60)
             
@@ -289,7 +322,11 @@ You can now execute queries using this session ID. The session will automaticall
                     del self._session_created_times[session_id]
                 return [types.TextContent(type="text", text="Session has expired. Please authenticate again.")]
             
-            logger.info(f"Executing MCP query for user {user.username}: {cypher_query[:100]}...")
+            # Determine graph context - explicit parameter takes precedence over session default
+            effective_graph_name = graph_name or self._session_graph_contexts.get(session_id)
+            
+            context_msg = f" in graph '{effective_graph_name}'" if effective_graph_name else ""
+            logger.info(f"Executing MCP query for user {user.username}{context_msg}: {cypher_query[:100]}...")
             
             # Execute query using user's credentials
             start_time = time.time()
@@ -298,8 +335,8 @@ You can now execute queries using this session ID. The session will automaticall
             # Apply result limit from MCP settings if needed
             effective_limit = min(limit, self.settings.MCP_MAX_RESULT_ROWS)
             
-            # Execute the query
-            results = user_xgt_ops.execute_query(cypher_query, parameters)
+            # Execute the query with graph context
+            results = user_xgt_ops.execute_query(cypher_query, parameters, graph_name=effective_graph_name)
             
             execution_time_ms = (time.time() - start_time) * 1000
             
@@ -322,7 +359,7 @@ You can now execute queries using this session ID. The session will automaticall
         """Handle schema information requests."""
         try:
             session_id = arguments["session_id"]
-            dataset_name = arguments.get("dataset_name")
+            graph_name = arguments.get("graph_name")
             include_sample_data = arguments.get("include_sample_data", False)
             
             # Validate session
@@ -338,11 +375,11 @@ You can now execute queries using this session ID. The session will automaticall
                     del self._session_created_times[session_id]
                 return [types.TextContent(type="text", text="Session has expired. Please authenticate again.")]
             
-            logger.info(f"Getting schema info for user {user.username}, dataset: {dataset_name}")
+            logger.info(f"Getting schema info for user {user.username}, graph: {graph_name}")
             
             # Get schema using user's credentials
             user_xgt_ops = create_user_xgt_operations(user.credentials)
-            formatted_schema = user_xgt_ops.get_schema_for_mcp(dataset_name)
+            formatted_schema = user_xgt_ops.get_schema_for_mcp(graph_name)
             
             # Add sample data if requested
             if include_sample_data:
@@ -375,23 +412,23 @@ You can now execute queries using this session ID. The session will automaticall
             
             logger.info(f"Listing graphs for user {user.username}")
             
-            # Get datasets using user's credentials
+            # Get graphs using user's credentials
             user_xgt_ops = create_user_xgt_operations(user.credentials)
-            datasets = user_xgt_ops.datasets_info()
+            graphs = user_xgt_ops.graphs_info()
             
             # Format for Claude
-            output_lines = ["Available Graphs/Datasets:", ""]
+            output_lines = ["Available Graphs:", ""]
             
-            if not datasets:
+            if not graphs:
                 output_lines.append("No graphs found for your user account.")
             else:
-                for i, dataset in enumerate(datasets, 1):
-                    output_lines.append(f"{i}. {dataset['name']}")
+                for i, graph in enumerate(graphs, 1):
+                    output_lines.append(f"{i}. {graph['name']}")
                     
                     # Count vertices and edges
-                    vertex_count = len(dataset.get('vertices', []))
-                    edge_count = len(dataset.get('edges', []))
-                    table_count = len(dataset.get('tables', []))
+                    vertex_count = len(graph.get('vertices', []))
+                    edge_count = len(graph.get('edges', []))
+                    table_count = len(graph.get('tables', []))
                     
                     output_lines.append(f"   - Node types: {vertex_count}")
                     output_lines.append(f"   - Relationship types: {edge_count}")
@@ -413,6 +450,7 @@ You can now execute queries using this session ID. The session will automaticall
         try:
             session_id = arguments["session_id"]
             frame_name = arguments["frame_name"]
+            graph_name = arguments.get("graph_name")
             offset = arguments.get("offset", 0)
             limit = arguments.get("limit", 100)
             
@@ -429,17 +467,78 @@ You can now execute queries using this session ID. The session will automaticall
                     del self._session_created_times[session_id]
                 return [types.TextContent(type="text", text="Session has expired. Please authenticate again.")]
             
-            logger.info(f"Getting frame data for user {user.username}, frame: {frame_name}")
+            # Determine graph context - explicit parameter takes precedence over session default
+            effective_graph_name = graph_name or self._session_graph_contexts.get(session_id)
+            
+            # Build qualified frame name if graph context is provided
+            qualified_frame_name = frame_name
+            if effective_graph_name:
+                qualified_frame_name = f"{effective_graph_name}__{frame_name}"
+            
+            context_msg = f" in graph '{effective_graph_name}'" if effective_graph_name else ""
+            logger.info(f"Getting frame data for user {user.username}, frame: {qualified_frame_name}{context_msg}")
             
             # Get frame data using user's credentials
             user_xgt_ops = create_user_xgt_operations(user.credentials)
-            formatted_data = user_xgt_ops.get_frame_data_for_mcp(frame_name, offset, limit)
+            formatted_data = user_xgt_ops.get_frame_data_for_mcp(qualified_frame_name, offset, limit)
             
             return [types.TextContent(type="text", text=formatted_data)]
             
         except Exception as e:
             logger.error(f"MCP frame data request failed: {e}")
             error_msg = MCPResultFormatter.format_error_message(e, "frame data retrieval")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def _handle_use_graph(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+        """Handle graph context setting requests."""
+        try:
+            session_id = arguments["session_id"]
+            graph_name = arguments["graph_name"]
+            
+            # Validate session
+            if session_id not in self.active_sessions:
+                return [types.TextContent(type="text", text="Invalid or expired session ID. Please authenticate first.")]
+            
+            user = self.active_sessions[session_id]
+            
+            # Check session timeout
+            if not self.auth_service.validate_session_timeout(user):
+                del self.active_sessions[session_id]
+                if session_id in self._session_created_times:
+                    del self._session_created_times[session_id]
+                if session_id in self._session_graph_contexts:
+                    del self._session_graph_contexts[session_id]
+                return [types.TextContent(type="text", text="Session has expired. Please authenticate again.")]
+            
+            # Verify the graph exists and user has access to it
+            user_xgt_ops = create_user_xgt_operations(user.credentials)
+            try:
+                graphs = user_xgt_ops.graphs_info(graph_name=graph_name)
+                if not graphs:
+                    return [types.TextContent(type="text", text=f"Graph '{graph_name}' not found or not accessible.")]
+            except Exception as e:
+                logger.warning(f"Could not verify graph access for {graph_name}: {e}")
+                # Continue anyway - let XGT handle access control during actual operations
+            
+            # Set the session graph context
+            self._session_graph_contexts[session_id] = graph_name
+            
+            logger.info(f"Set graph context to '{graph_name}' for user {user.username} session {session_id}")
+            
+            success_msg = f"""Graph context set successfully!
+
+Current graph: {graph_name}
+Session ID: {session_id}
+
+All subsequent queries and frame operations will use this graph context automatically unless explicitly overridden.
+
+You can now run queries without specifying the graph name each time."""
+
+            return [types.TextContent(type="text", text=success_msg)]
+            
+        except Exception as e:
+            logger.error(f"MCP graph context setting failed: {e}")
+            error_msg = MCPResultFormatter.format_error_message(e, "graph context setting")
             return [types.TextContent(type="text", text=error_msg)]
 
     async def _cleanup_expired_sessions(self):
@@ -457,6 +556,8 @@ You can now execute queries using this session ID. The session will automaticall
                     del self.active_sessions[session_id]
                 if session_id in self._session_created_times:
                     del self._session_created_times[session_id]
+                if session_id in self._session_graph_contexts:
+                    del self._session_graph_contexts[session_id]
                 logger.info(f"Cleaned up expired MCP session: {session_id}")
             
             # Also check if we have too many active sessions
@@ -473,6 +574,8 @@ You can now execute queries using this session ID. The session will automaticall
                         del self.active_sessions[session_id]
                     if session_id in self._session_created_times:
                         del self._session_created_times[session_id]
+                    if session_id in self._session_graph_contexts:
+                        del self._session_graph_contexts[session_id]
                     logger.info(f"Cleaned up old MCP session due to limit: {session_id}")
                         
         except Exception as e:

@@ -104,10 +104,11 @@ export MCP_MAX_RESULT_ROWS="10000"          # Max rows per query
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
 | `rocketgraph_authenticate` | Login to XGT | `auth_type`, `username`, `password` |
-| `rocketgraph_query` | Execute Cypher queries | `query`, `session_id`, `parameters` |
-| `rocketgraph_schema` | Get graph schemas | `session_id`, `dataset_name` |
+| `rocketgraph_query` | Execute Cypher queries | `query`, `session_id`, `graph_name` |
+| `rocketgraph_schema` | Get graph schemas | `session_id`, `graph_name` |
 | `rocketgraph_list_graphs` | List available graphs | `session_id` |
-| `rocketgraph_frame_data` | Get sample data | `session_id`, `frame_name`, `limit` |
+| `rocketgraph_frame_data` | Get sample data | `session_id`, `frame_name`, `graph_name` |
+| `rocketgraph_use_graph` | Set graph context | `session_id`, `graph_name` |
 
 ## Troubleshooting Commands
 

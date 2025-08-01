@@ -173,7 +173,7 @@ Get schema information for graphs/datasets.
 
 **Parameters:**
 - `session_id`: Authentication session ID
-- `dataset_name`: Optional specific dataset name
+- `graph_name`: Optional specific graph name
 - `fully_qualified`: Include namespace in names (default: false)
 
 ### 4. `rocketgraph_list_graphs`
@@ -188,8 +188,21 @@ Get sample data from specific frames/tables.
 **Parameters:**
 - `session_id`: Authentication session ID
 - `frame_name`: Name of the frame to query
+- `graph_name`: Optional graph name for context
 - `offset`: Starting row (default: 0)
 - `limit`: Number of rows (default: 100)
+
+### 6. `rocketgraph_use_graph`
+Set the default graph context for subsequent operations.
+
+**Parameters:**
+- `session_id`: Authentication session ID
+- `graph_name`: Graph name to use as default context
+
+**Benefits:**
+- Natural language interactions: "Use the CustomerGraph"
+- Session persistence: Remembers context for subsequent queries
+- Simplified queries: No need to specify graph in every query
 
 ## Usage Examples
 
@@ -231,6 +244,29 @@ Claude will:
 2. Use `rocketgraph_schema` to understand the data structure
 3. Use `rocketgraph_query` to execute analytical queries
 4. Present insights and visualizations
+
+### Example 4: Using Graph Context (NEW)
+
+```
+Claude, please use the CustomerGraph and show me the top customers by purchase amount.
+```
+
+Claude will:
+1. Use `rocketgraph_use_graph` to set the default context to "CustomerGraph"
+2. Use `rocketgraph_query` without specifying graph_name (uses session context)
+3. All subsequent queries will automatically use CustomerGraph context
+
+This enables more natural conversations:
+```
+Claude: "Let me set the context to CustomerGraph first"
+→ Uses rocketgraph_use_graph
+
+Claude: "Now show me customer purchases"  
+→ Uses rocketgraph_query (automatically scoped to CustomerGraph)
+
+Claude: "Get sample data from the Orders frame"
+→ Uses rocketgraph_frame_data (automatically looks for CustomerGraph__Orders)
+```
 
 ## Configuration Options
 

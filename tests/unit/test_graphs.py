@@ -41,7 +41,7 @@ class TestGraphsEndpoint:
     def test_list_graphs_success(self, mock_create_user_xgt_ops, client):
         """Test successful graphs listing."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.datasets_info.return_value = [
+        mock_xgt_ops.graphs_info.return_value = [
             {
                 "name": "test_namespace",
                 "vertices": [
@@ -80,7 +80,7 @@ class TestGraphsEndpoint:
     def test_list_graphs_empty(self, mock_create_user_xgt_ops, client):
         """Test graphs listing when no graphs exist."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.datasets_info.return_value = []
+        mock_xgt_ops.graphs_info.return_value = []
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/graphs")
@@ -97,7 +97,7 @@ class TestGraphsEndpoint:
         from app.utils.exceptions import XGTConnectionError
 
         mock_xgt_ops = Mock()
-        mock_xgt_ops.datasets_info.side_effect = XGTConnectionError("Connection failed")
+        mock_xgt_ops.graphs_info.side_effect = XGTConnectionError("Connection failed")
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/graphs")
@@ -114,7 +114,7 @@ class TestGraphsEndpoint:
     def test_get_graph_info_success(self, mock_create_user_xgt_ops, client):
         """Test successful single graph retrieval."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.datasets_info.return_value = [
+        mock_xgt_ops.graphs_info.return_value = [
             {
                 "name": "social_network",
                 "vertices": [
@@ -149,7 +149,7 @@ class TestGraphsEndpoint:
     def test_get_graph_info_not_found(self, mock_create_user_xgt_ops, client):
         """Test graph retrieval when graph doesn't exist."""
         mock_xgt_ops = Mock()
-        mock_xgt_ops.datasets_info.return_value = []
+        mock_xgt_ops.graphs_info.return_value = []
         mock_create_user_xgt_ops.return_value = mock_xgt_ops
 
         response = client.get("/api/v1/public/graphs/nonexistent")
@@ -242,8 +242,8 @@ class TestGraphSchemaEndpoint:
 
         assert response.status_code == 200
 
-        # Verify that the parameters were passed to get_schema (still using dataset_name for XGT calls)
-        mock_xgt_ops.get_schema.assert_called_once_with(dataset_name="test_graph", fully_qualified=True, add_missing_edge_nodes=True)
+        # Verify that the parameters were passed to get_schema (now using graph_name)
+        mock_xgt_ops.get_schema.assert_called_once_with(graph_name="test_graph", fully_qualified=True, add_missing_edge_nodes=True)
 
     @patch("app.api.v1.public.graphs.create_user_xgt_operations")
     def test_get_graph_schema_xgt_error(self, mock_create_user_xgt_ops, client):

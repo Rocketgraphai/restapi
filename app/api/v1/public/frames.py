@@ -64,7 +64,7 @@ class FramesListResponse(BaseModel):
 
     frames: list[FrameInfo] = Field(..., description="List of frames")
     total_count: int = Field(..., description="Total number of frames")
-    namespaces: list[str] = Field(..., description="Namespaces included in the results")
+    graphs: list[str] = Field(..., description="Graph names included in the results")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -140,21 +140,21 @@ class FrameDataResponse(BaseModel):
 @router.get("/frames", response_model=FramesListResponse)
 async def list_frames(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
-    namespace: Optional[str] = Query(
+    graph_name: Optional[str] = Query(
         default=None,
-        description="Filter frames by namespace (if not specified, all namespaces except xgt__)",
+        description="Filter frames by graph name (if not specified, all graphs except xgt__)",
     ),
     frame_type: Optional[str] = Query(default=None, description="Filter frames by type (vertex, edge, table)"),
 ):
     """
-    List all frames across all namespaces.
+    List all frames across all graphs.
 
     Returns information about all frames (vertex, edge, and table frames)
-    across all accessible namespaces, excluding the system xgt__ namespace.
+    across all accessible graphs, excluding the system xgt__ graph.
     Useful for discovering available data structures before querying.
 
     Args:
-        namespace: Filter frames by specific namespace (optional)
+        graph_name: Filter frames by specific graph name (optional)
         frame_type: Filter frames by type (vertex, edge, table) (optional)
 
     Returns:
@@ -169,35 +169,35 @@ async def list_frames(
         # Create user-specific XGT operations instance
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
-        # Get datasets information from XGT (this includes frame info)
-        datasets_raw = user_xgt_ops.datasets_info()
+        # Get graphs information from XGT (this includes frame info)
+        graphs_raw = user_xgt_ops.graphs_info()
 
         frames = []
-        namespaces_found = set()
+        graphs_found = set()
 
-        for dataset_raw in datasets_raw:
-            dataset_namespace = dataset_raw["name"]
+        for graph_raw in graphs_raw:
+            current_graph_name = graph_raw["name"]
 
-            # Skip the xgt__ namespace
-            if dataset_namespace == "xgt__":
+            # Skip the xgt__ graph
+            if current_graph_name == "xgt__":
                 continue
 
-            # Apply namespace filter if specified
-            if namespace and dataset_namespace != namespace:
+            # Apply graph name filter if specified
+            if graph_name and current_graph_name != graph_name:
                 continue
 
-            namespaces_found.add(dataset_namespace)
+            graphs_found.add(current_graph_name)
 
             # Process vertex frames
-            for vertex_raw in dataset_raw.get("vertices", []):
+            for vertex_raw in graph_raw.get("vertices", []):
                 # Apply frame type filter if specified
                 if frame_type and frame_type != "vertex":
                     continue
 
                 frame_info = FrameInfo(
                     name=vertex_raw["name"],
-                    full_name=f"{dataset_namespace}__{vertex_raw['name']}",
-                    namespace=dataset_namespace,
+                    full_name=f"{current_graph_name}__{vertex_raw['name']}",
+                    namespace=current_graph_name,
                     frame_type="vertex",
                     num_rows=vertex_raw["num_rows"],
                     schema_definition=vertex_raw["schema"],
@@ -210,15 +210,15 @@ async def list_frames(
                 frames.append(frame_info)
 
             # Process edge frames
-            for edge_raw in dataset_raw.get("edges", []):
+            for edge_raw in graph_raw.get("edges", []):
                 # Apply frame type filter if specified
                 if frame_type and frame_type != "edge":
                     continue
 
                 frame_info = FrameInfo(
                     name=edge_raw["name"],
-                    full_name=f"{dataset_namespace}__{edge_raw['name']}",
-                    namespace=dataset_namespace,
+                    full_name=f"{current_graph_name}__{edge_raw['name']}",
+                    namespace=current_graph_name,
                     frame_type="edge",
                     num_rows=edge_raw["num_rows"],
                     schema_definition=edge_raw["schema"],
@@ -231,15 +231,15 @@ async def list_frames(
                 frames.append(frame_info)
 
             # Process table frames
-            for table_raw in dataset_raw.get("tables", []):
+            for table_raw in graph_raw.get("tables", []):
                 # Apply frame type filter if specified
                 if frame_type and frame_type != "table":
                     continue
 
                 frame_info = FrameInfo(
                     name=table_raw["name"],
-                    full_name=f"{dataset_namespace}__{table_raw['name']}",
-                    namespace=dataset_namespace,
+                    full_name=f"{current_graph_name}__{table_raw['name']}",
+                    namespace=current_graph_name,
                     frame_type="table",
                     num_rows=table_raw["num_rows"],
                     schema_definition=table_raw["schema"],
@@ -251,12 +251,12 @@ async def list_frames(
                 )
                 frames.append(frame_info)
 
-        # Sort frames by namespace, then by frame name
+        # Sort frames by graph name, then by frame name
         frames.sort(key=lambda f: (f.namespace, f.name))
 
-        logger.info(f"Found {len(frames)} frames across {len(namespaces_found)} namespaces")
+        logger.info(f"Found {len(frames)} frames across {len(graphs_found)} graphs")
 
-        return FramesListResponse(frames=frames, total_count=len(frames), namespaces=sorted(namespaces_found))
+        return FramesListResponse(frames=frames, total_count=len(frames), graphs=sorted(graphs_found))
 
     except XGTConnectionError as e:
         logger.error(f"XGT connection failed: {e}")

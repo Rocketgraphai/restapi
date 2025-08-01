@@ -172,7 +172,7 @@ async def list_graphs(
     """
     List all graphs available to the organization.
 
-    Returns metadata about graphs (namespaces) that contain graph data.
+    Returns metadata about graphs that contain graph data.
     Each graph contains vertex frames (nodes) and edge frames (relationships).
 
     Args:
@@ -191,19 +191,18 @@ async def list_graphs(
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get graphs accessible to user (their namespace)
-        # Note: Using datasets_info() until XGT graph API is available
-        datasets_raw = user_xgt_ops.datasets_info()
+        graphs_raw = user_xgt_ops.graphs_info()
 
         # Transform the raw data into our response format
         graphs = []
-        for dataset_raw in datasets_raw:
+        for graph_raw in graphs_raw:
             # Skip empty graphs if not requested
-            if not include_empty and not dataset_raw.get("vertices") and not dataset_raw.get("edges"):
+            if not include_empty and not graph_raw.get("vertices") and not graph_raw.get("edges"):
                 continue
 
             # Convert vertex frames
             vertices = []
-            for vertex_raw in dataset_raw.get("vertices", []):
+            for vertex_raw in graph_raw.get("vertices", []):
                 vertices.append(
                     VertexFrameInfo(
                         name=vertex_raw["name"],
@@ -217,7 +216,7 @@ async def list_graphs(
 
             # Convert edge frames
             edges = []
-            for edge_raw in dataset_raw.get("edges", []):
+            for edge_raw in graph_raw.get("edges", []):
                 edges.append(
                     EdgeFrameInfo(
                         name=edge_raw["name"],
@@ -232,7 +231,7 @@ async def list_graphs(
                     )
                 )
 
-            graphs.append(GraphInfo(name=dataset_raw["name"], vertices=vertices, edges=edges))
+            graphs.append(GraphInfo(name=graph_raw["name"], vertices=vertices, edges=edges))
 
         logger.info(f"Found {len(graphs)} graphs")
 
@@ -301,9 +300,9 @@ async def get_graph_schema(
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get schema information from XGT
-        # Note: Using dataset_name parameter until XGT graph API is available
+        # Get schema using the graph name
         schema_raw = user_xgt_ops.get_schema(
-            dataset_name=graph_name,
+            graph_name=graph_name,
             fully_qualified=fully_qualified,
             add_missing_edge_nodes=add_missing_edge_nodes,
         )
@@ -410,10 +409,10 @@ async def get_graph_info(
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
 
         # Get specific graph information
-        # Note: Using dataset_name parameter until XGT graph API is available
-        datasets_raw = user_xgt_ops.datasets_info(dataset_name=graph_name)
+        # Get specific graph information
+        graphs_raw = user_xgt_ops.graphs_info(graph_name=graph_name)
 
-        if not datasets_raw:
+        if not graphs_raw:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -423,11 +422,11 @@ async def get_graph_info(
                 },
             )
 
-        dataset_raw = datasets_raw[0]  # Should only be one graph
+        graph_raw = graphs_raw[0]  # Should only be one graph
 
         # Convert to response format (same logic as list_graphs)
         vertices = []
-        for vertex_raw in dataset_raw.get("vertices", []):
+        for vertex_raw in graph_raw.get("vertices", []):
             vertices.append(
                 VertexFrameInfo(
                     name=vertex_raw["name"],
@@ -440,7 +439,7 @@ async def get_graph_info(
             )
 
         edges = []
-        for edge_raw in dataset_raw.get("edges", []):
+        for edge_raw in graph_raw.get("edges", []):
             edges.append(
                 EdgeFrameInfo(
                     name=edge_raw["name"],
@@ -455,7 +454,7 @@ async def get_graph_info(
                 )
             )
 
-        return GraphInfo(name=dataset_raw["name"], vertices=vertices, edges=edges)
+        return GraphInfo(name=graph_raw["name"], vertices=vertices, edges=edges)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is

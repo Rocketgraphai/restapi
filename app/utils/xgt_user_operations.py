@@ -190,13 +190,14 @@ class UserXGTOperations:
                 except Exception:
                     pass  # Ignore errors on close
 
-    def execute_query(self, query: str, parameters: dict = None) -> list:
+    def execute_query(self, query: str, parameters: dict = None, graph_name: str = None) -> list:
         """
         Execute a query using user's XGT connection.
 
         Args:
             query: Cypher query to execute
             parameters: Query parameters
+            graph_name: Optional graph name to scope the query to
 
         Returns:
             List of result dictionaries
@@ -206,6 +207,22 @@ class UserXGTOperations:
         """
         try:
             with self.connection() as conn:
+                # Set graph context if specified
+                if graph_name:
+                    try:
+                        # Set the default namespace to the graph name for this query
+                        if hasattr(conn, 'set_default_namespace'):
+                            conn.set_default_namespace(graph_name)
+                            logger.debug(f"Set default namespace to: {graph_name}")
+                        elif hasattr(conn, 'use_namespace'):
+                            conn.use_namespace(graph_name)
+                            logger.debug(f"Using namespace: {graph_name}")
+                        else:
+                            logger.warning(f"Cannot set namespace to {graph_name}, XGT connection doesn't support namespace switching")
+                    except Exception as e:
+                        logger.warning(f"Failed to set namespace to {graph_name}: {e}")
+                        # Continue with query execution - namespace setting is optional
+
                 # Try different XGT API methods based on what's available
                 result = None
 
@@ -213,8 +230,16 @@ class UserXGTOperations:
                     # Try run_job method first (newer API)
                     if hasattr(conn, "run_job"):
                         job = conn.run_job(query)
-                        # Get results from job
-                        result = getattr(job, "results", job)
+                        # Get results from job - need to wait for completion and get results
+                        if hasattr(job, "get_data"):
+                            result = job.get_data()
+                        elif hasattr(job, "results"):
+                            result = job.results
+                        elif hasattr(job, "get"):
+                            result = job.get()
+                        else:
+                            # If job doesn't have results method, it might be a direct result
+                            result = job
                     else:
                         raise AttributeError("run_job not available")
 
@@ -238,6 +263,25 @@ class UserXGTOperations:
 
                 # Convert result to list of dictionaries
                 results = []
+
+                # First check if result is an XGT job object that we missed
+                if hasattr(result, '__class__') and 'xgt.job.Job' in str(result.__class__):
+                    logger.debug("Found XGT Job object, attempting to extract results")
+                    if hasattr(result, "get_data"):
+                        result = result.get_data()
+                        logger.debug(f"Extracted data from job.get_data(): type={type(result)}, len={len(result) if hasattr(result, '__len__') else 'N/A'}")
+                    elif hasattr(result, "results"):
+                        result = result.results
+                        logger.debug(f"Extracted data from job.results: type={type(result)}, len={len(result) if hasattr(result, '__len__') else 'N/A'}")
+                    elif hasattr(result, "get"):
+                        result = result.get()
+                        logger.debug(f"Extracted data from job.get(): type={type(result)}, len={len(result) if hasattr(result, '__len__') else 'N/A'}")
+                    else:
+                        logger.error(f"XGT Job object has no known result extraction method: {dir(result)}")
+                        raise XGTOperationError("Cannot extract results from XGT job object")
+
+                logger.debug(f"Processing result of type: {type(result)}")
+
                 if hasattr(result, "records") and result.records:
                     for record in result.records:
                         if hasattr(record, "data"):
@@ -245,8 +289,15 @@ class UserXGTOperations:
                         elif hasattr(record, "_fields") and hasattr(record, "_values"):
                             record_dict = dict(zip(record._fields, record._values))
                             results.append(record_dict)
+                        elif isinstance(record, dict):
+                            results.append(record)
                         else:
-                            results.append(dict(record))
+                            # Try to convert to dict only if it's not already a dict
+                            try:
+                                results.append(dict(record))
+                            except (TypeError, ValueError):
+                                # If conversion fails, append the record as-is
+                                results.append(record)
                 elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
                     # Handle case where result is directly iterable
                     for item in result:
@@ -255,12 +306,17 @@ class UserXGTOperations:
                         elif isinstance(item, dict):
                             results.append(item)
                         else:
-                            results.append(dict(item))
+                            # Try to convert to dict only if it's not already a dict
+                            try:
+                                results.append(dict(item))
+                            except (TypeError, ValueError):
+                                # If conversion fails, append the item as-is
+                                results.append(item)
                 else:
                     # Handle case where result is the data itself
                     if isinstance(result, list):
                         results = result
-                    elif result is not None:
+                    elif isinstance(result, dict) or result is not None:
                         results = [result]
 
                 return results
@@ -400,16 +456,16 @@ class UserXGTOperations:
                 "key": None
             }
 
-    def datasets_info(self, dataset_name: Optional[str] = None) -> list:
+    def graphs_info(self, graph_name: Optional[str] = None) -> list:
         """
-        Get information about datasets (graphs) within the user's namespace.
-        Each dataset represents a graph with its own collection of frames.
+        Get information about graphs within the user's namespace.
+        Each graph contains its own collection of frames (nodes, edges, tables).
 
         Args:
-            dataset_name: Optional specific dataset name to retrieve
+            graph_name: Optional specific graph name to retrieve
 
         Returns:
-            List of dataset information dictionaries, each representing a graph
+            List of graph information dictionaries
         """
         try:
             with self.connection() as conn:
@@ -419,14 +475,14 @@ class UserXGTOperations:
                 table_frames = list(conn.get_frames(frame_type="Table"))
 
                 # Group frames by dataset/graph name
-                # This extracts the dataset name from frame names (assumes naming convention)
-                datasets = {}
+                # This extracts the graph name from frame names (assumes naming convention)
+                graphs = {}
 
-                # Process vertex frames to identify datasets
+                # Process vertex frames to identify graphs
                 for frame in vertex_frames:
-                    dataset_name_extracted = self._extract_dataset_name(frame.name)
-                    if dataset_name_extracted not in datasets:
-                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
+                    graph_name_extracted = self._extract_dataset_name(frame.name)
+                    if graph_name_extracted not in graphs:
+                        graphs[graph_name_extracted] = {"name": graph_name_extracted, "vertices": [], "edges": [], "tables": []}
 
                     attributes = self._extract_frame_attributes(frame)
                     frame_info = {
@@ -437,13 +493,13 @@ class UserXGTOperations:
                         "delete_frame": True,
                         "key": attributes["key"],
                     }
-                    datasets[dataset_name_extracted]["vertices"].append(frame_info)
+                    graphs[graph_name_extracted]["vertices"].append(frame_info)
 
                 # Process edge frames
                 for frame in edge_frames:
-                    dataset_name_extracted = self._extract_dataset_name(frame.name)
-                    if dataset_name_extracted not in datasets:
-                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
+                    graph_name_extracted = self._extract_dataset_name(frame.name)
+                    if graph_name_extracted not in graphs:
+                        graphs[graph_name_extracted] = {"name": graph_name_extracted, "vertices": [], "edges": [], "tables": []}
 
                     attributes = self._extract_frame_attributes(frame)
                     frame_info = {
@@ -457,13 +513,13 @@ class UserXGTOperations:
                         "target_frame": attributes["target_frame"] or "unknown_target",
                         "target_key": attributes["target_key"],
                     }
-                    datasets[dataset_name_extracted]["edges"].append(frame_info)
+                    graphs[graph_name_extracted]["edges"].append(frame_info)
 
                 # Process table frames
                 for frame in table_frames:
-                    dataset_name_extracted = self._extract_dataset_name(frame.name)
-                    if dataset_name_extracted not in datasets:
-                        datasets[dataset_name_extracted] = {"name": dataset_name_extracted, "vertices": [], "edges": [], "tables": []}
+                    graph_name_extracted = self._extract_dataset_name(frame.name)
+                    if graph_name_extracted not in graphs:
+                        graphs[graph_name_extracted] = {"name": graph_name_extracted, "vertices": [], "edges": [], "tables": []}
 
                     frame_info = {
                         "name": frame.name,
@@ -472,18 +528,18 @@ class UserXGTOperations:
                         "create_rows": True,
                         "delete_frame": True,
                     }
-                    datasets[dataset_name_extracted]["tables"].append(frame_info)
+                    graphs[graph_name_extracted]["tables"].append(frame_info)
 
-                # Filter by specific dataset if requested
-                if dataset_name:
-                    return [datasets[dataset_name]] if dataset_name in datasets else []
+                # Filter by specific graph if requested
+                if graph_name:
+                    return [graphs[graph_name]] if graph_name in graphs else []
 
-                # Return all datasets as a list
-                return list(datasets.values())
+                # Return all graphs as a list
+                return list(graphs.values())
 
         except Exception as e:
-            logger.error(f"Failed to get datasets info: {e}")
-            raise XGTOperationError(f"Datasets info retrieval failed: {str(e)}")
+            logger.error(f"Failed to get graphs info: {e}")
+            raise XGTOperationError(f"Graphs info retrieval failed: {str(e)}")
 
     def _extract_dataset_name(self, frame_name: str) -> str:
         """
@@ -663,17 +719,17 @@ class UserXGTOperations:
         from ..core.mcp_formatters import MCPResultFormatter
         return MCPResultFormatter.format_query_results(results, columns, execution_time_ms)
 
-    def get_schema_for_mcp(self, dataset_name: str = None) -> str:
+    def get_schema_for_mcp(self, graph_name: str = None) -> str:
         """
         Get schema information formatted for Claude via MCP.
 
         Args:
-            dataset_name: Optional dataset name, defaults to user namespace
+            graph_name: Optional graph name, defaults to user namespace
 
         Returns:
             Formatted schema string optimized for Claude understanding
         """
-        schema = self.get_schema(dataset_name or self.get_user_namespace())
+        schema = self.get_schema(graph_name or self.get_user_namespace())
         from ..core.mcp_formatters import MCPResultFormatter
         return MCPResultFormatter.format_schema_info(schema)
 
@@ -693,12 +749,12 @@ class UserXGTOperations:
         from ..core.mcp_formatters import MCPResultFormatter
         return MCPResultFormatter.format_frame_data(frame_data)
 
-    def get_schema(self, dataset_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False) -> dict[str, Any]:
+    def get_schema(self, graph_name: str, fully_qualified: bool = False, add_missing_edge_nodes: bool = False) -> dict[str, Any]:
         """
-        Get schema information for a dataset.
+        Get schema information for a graph.
 
         Args:
-            dataset_name: Name of the dataset
+            graph_name: Name of the graph
             fully_qualified: Whether to include namespace in names
             add_missing_edge_nodes: Whether to include missing edge nodes
 
@@ -717,18 +773,18 @@ class UserXGTOperations:
                 all_vertex_frames = list(conn.get_frames(frame_type="Vertex"))
                 all_edge_frames = list(conn.get_frames(frame_type="Edge"))
 
-                # Filter frames for the specific dataset using the same logic as datasets_info
+                # Filter frames for the specific graph using the same logic as graphs_info
                 vertex_frames = []
                 edge_frames = []
 
                 for frame in all_vertex_frames:
-                    frame_dataset = self._extract_dataset_name(frame.name)
-                    if frame_dataset == dataset_name:
+                    frame_graph = self._extract_dataset_name(frame.name)
+                    if frame_graph == graph_name:
                         vertex_frames.append(frame)
 
                 for frame in all_edge_frames:
-                    frame_dataset = self._extract_dataset_name(frame.name)
-                    if frame_dataset == dataset_name:
+                    frame_graph = self._extract_dataset_name(frame.name)
+                    if frame_graph == graph_name:
                         edge_frames.append(frame)
 
                 # Build nodes schema
@@ -771,7 +827,7 @@ class UserXGTOperations:
                     }
                     edges.append(edge_info)
 
-                return {"graph": dataset_name, "nodes": nodes, "edges": edges}
+                return {"graph": graph_name, "nodes": nodes, "edges": edges}
 
         except Exception as e:
             logger.error(f"Failed to get schema: {e}")

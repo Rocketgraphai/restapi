@@ -55,15 +55,25 @@ class QueryResponse(BaseModel):
     submitted_at: float = Field(..., description="Unix timestamp when query was submitted")
     estimated_completion: Optional[str] = Field(None, description="Estimated completion time (ISO 8601)")
 
+    # Query results (immediate response following Neo4j pattern)
+    columns: Optional[list[str]] = Field(None, description="Column names from query results")
+    data: Optional[list[list[Any]]] = Field(None, description="Query result rows")
+    returned_rows: Optional[int] = Field(None, description="Number of rows returned")
+    execution_time_ms: Optional[int] = Field(None, description="Query execution time in milliseconds")
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "job_id": 12345,
-                "status": "queued",
+                "status": "completed",
                 "query": "MATCH (c:Customer) RETURN c.name LIMIT 10",
                 "graph_name": "ecommerce",
                 "submitted_at": 1642248000.0,
-                "estimated_completion": "2024-01-15T10:32:00Z",
+                "estimated_completion": None,
+                "columns": ["c.name"],
+                "data": [["John Doe"], ["Jane Smith"], ["Bob Wilson"]],
+                "returned_rows": 3,
+                "execution_time_ms": 45,
             }
         }
     )
@@ -291,40 +301,73 @@ async def execute_query(
     current_user: Annotated[AuthenticatedXGTUser, Depends(require_xgt_authentication)],
 ):
     """
-    Execute a Cypher query against a dataset.
+    Execute a Cypher query against a specific graph/dataset.
 
-    Submits a query for asynchronous execution. The query is validated
-    and queued for processing. Use the returned job_id to check status
-    and retrieve results.
+    Executes a query immediately and returns results following industry standards.
+    The query will be executed within the specified graph's namespace,
+    allowing queries to reference frames without fully qualified names.
+
+    Returns immediate results for queries, including data rows, columns,
+    and execution metadata similar to Neo4j 2024 Query API pattern.
 
     Args:
-        graph_name: Name of the graph to query
+        graph_name: Name of the graph to query (used as dataset namespace)
         query_request: Query details including Cypher query and parameters
 
     Returns:
-        Query job information with job_id for tracking
+        Query results with data, columns, and execution metadata
 
     Raises:
-        HTTPException: If query validation fails or submission errors occur
+        HTTPException: If query validation fails or execution errors occur
     """
     try:
         logger.info(f"Executing query on graph {graph_name}")
         logger.debug(f"Query: {query_request.query}")
 
-        # Execute query using user's XGT operations
+        # Track execution time
+        start_time = time.time()
+
+        # Execute query using user's XGT operations with graph context
         user_xgt_ops = create_user_xgt_operations(current_user.credentials)
-        results = user_xgt_ops.execute_query(query_request.query)
-        
+        results = user_xgt_ops.execute_query(
+            query_request.query,
+            parameters=query_request.parameters,
+            graph_name=graph_name
+        )
+
+        execution_time_ms = int((time.time() - start_time) * 1000)
+
+        # Process results to extract columns and data following Neo4j pattern
+        columns = []
+        data = []
+        returned_rows = 0
+
+        if results:
+            # If results are dictionaries (common for Cypher results)
+            if isinstance(results[0], dict):
+                columns = list(results[0].keys())
+                data = [[row[col] for col in columns] for row in results]
+            # If results are lists/tuples
+            elif isinstance(results[0], (list, tuple)):
+                # Generate column names (query should ideally provide these)
+                columns = [f"col_{i}" for i in range(len(results[0]))]
+                data = [list(row) for row in results]
+            else:
+                # Single value results
+                columns = ["result"]
+                data = [[row] for row in results]
+
+            returned_rows = len(data)
+
         job_info = {
             "job_id": hash(query_request.query + str(time.time())) % 1000000,
             "status": "completed",
             "query": query_request.query,
             "graph_name": graph_name,
             "submitted_at": time.time(),
-            "results": results,
         }
 
-        logger.info(f"Query scheduled with job ID: {job_info['job_id']}")
+        logger.info(f"Query completed with job ID: {job_info['job_id']}, returned {returned_rows} rows in {execution_time_ms}ms")
 
         return QueryResponse(
             job_id=job_info["job_id"],
@@ -333,6 +376,10 @@ async def execute_query(
             graph_name=job_info["graph_name"],
             submitted_at=job_info["submitted_at"],
             estimated_completion=None,  # XGT doesn't provide this yet
+            columns=columns,
+            data=data,
+            returned_rows=returned_rows,
+            execution_time_ms=execution_time_ms,
         )
 
     except XGTConnectionError as e:

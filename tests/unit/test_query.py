@@ -67,7 +67,11 @@ class TestQueryExecution:
         assert "submitted_at" in data
 
         # Verify XGT operations was called correctly
-        mock_xgt_ops.execute_query.assert_called_once_with("MATCH (c:Customer) RETURN c.name LIMIT 10")
+        mock_xgt_ops.execute_query.assert_called_once_with(
+            "MATCH (c:Customer) RETURN c.name LIMIT 10", 
+            parameters=None, 
+            graph_name="ecommerce"
+        )
 
     @patch("app.api.v1.public.query.create_user_xgt_operations")
     def test_execute_query_with_parameters(self, mock_create_user_xgt_ops, client):
