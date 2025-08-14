@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - XGT_HOST=xgt
+      - XGT_PORT=4367
+      - XGT_USERNAME=${XGT_USERNAME:-admin}
+      - XGT_PASSWORD=${XGT_PASSWORD:-changeme}
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    depends_on:
+      xgt:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  xgt:
+    image: rocketgraph/xgt:latest
+    ports:
+      - "4367:4367"
+    environment:
+      - XGT_LICENSE_KEY=${XGT_LICENSE_KEY}
+    volumes:
+      - xgt_data:/opt/xgt/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4367/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  xgt_data:
+
+networks:
+  default:
+    name: rocketgraph-network

@@ -19,8 +19,6 @@ The RocketGraph Public API is designed as a separate service from the desktop ap
 
 - Python 3.11+
 - XGT Graph Database
-- MongoDB (for API metadata)
-- Redis (for caching and rate limiting)
 
 ### Installation
 
@@ -116,12 +114,6 @@ XGT_HOST=localhost
 XGT_PORT=4367
 XGT_USERNAME=admin
 XGT_PASSWORD=your-password
-
-# MongoDB for API metadata
-MONGODB_URI=mongodb://localhost:27017/rocketgraph_api
-
-# Redis for caching/rate limiting  
-REDIS_URL=redis://localhost:6379
 ```
 
 ## Testing
