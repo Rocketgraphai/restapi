@@ -1,5 +1,5 @@
 # Multi-stage build for production FastAPI application
-FROM python:3.11-slim as builder
+FROM python:3.13.7-slim as builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,7 +21,7 @@ COPY requirements/ requirements/
 RUN pip install --no-cache-dir -r requirements/production.txt
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.13.7-slim as production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
