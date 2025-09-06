@@ -4,8 +4,8 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 
-# MCP (Model Context Protocol)
-mcp>=1.0.0
+# MCP (Model Context Protocol) - Official Python SDK
+mcp>=1.0.0,<2.0.0
 
 # Database & Caching - Remove unused MongoDB/Redis dependencies
 # pymongo>=4.6.0  # Not used - MongoDB dependencies removed
