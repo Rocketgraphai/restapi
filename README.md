@@ -2,12 +2,17 @@
 
 A secure, scalable REST API for graph database operations using XGT. Provides multi-tenant access to graph analytics capabilities with enterprise-grade security, monitoring, and Claude AI integration via MCP (Model Context Protocol).
 
+## Important Notes
+
+- This is beta code and is not production-ready.
+- This code has not been tested for security and may introduce security risks including sharing your graph data with LLMs.
+
 ## Overview
 
 The RocketGraph Public API is designed as a separate service from the desktop application, providing:
 
 - **Secure API Key Authentication** - Bearer token authentication with scoped access
-- **Multi-tenant Support** - Organization-based resource isolation  
+- **Multi-tenant Support** - Organization-based resource isolation
 - **Enterprise Security** - Rate limiting, audit logging, and comprehensive monitoring
 - **Graph Database Operations** - Full access to XGT graph database functionality
 - **RESTful Design** - Standard HTTP methods with JSON payloads
@@ -84,7 +89,7 @@ uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
 Comprehensive API documentation is available in the `docs/` directory:
 
 - **[Architecture Overview](docs/architecture-overview.md)** - System design and deployment options
-- **[Authentication Strategy](docs/authentication-strategy.md)** - API key management and security  
+- **[Authentication Strategy](docs/authentication-strategy.md)** - API key management and security
 - **[API Design](docs/api-design.md)** - Endpoint specifications and usage patterns
 - **[Security Guidelines](docs/security-guidelines.md)** - Security best practices
 - **[Deployment Guide](docs/deployment-guide.md)** - Production deployment instructions
@@ -139,7 +144,7 @@ Run the **exact same tests** as GitHub Actions locally:
 # Basic test suite (code quality + unit tests + mock integration)
 ./scripts/run-ci-tests.py
 
-# Include XGT integration tests  
+# Include XGT integration tests
 ./scripts/run-ci-tests.py --with-xgt
 
 # Use specific XGT version
@@ -188,7 +193,7 @@ To enable XGT integration testing in GitHub Actions:
    - `XGT_LICENSE_KEY`: Your XGT license key
 
 2. Set repository variables:
-   - `XGT_INTEGRATION_ENABLED`: `true` 
+   - `XGT_INTEGRATION_ENABLED`: `true`
    - `XGT_VERSION`: `latest` or specific version (e.g., `2.3.0`)
 
 The XGT integration tests will:
@@ -203,7 +208,7 @@ The XGT integration tests will:
 The API supports multiple rate limiting tiers:
 
 - **Free**: 100 req/min, 1K req/hour, 10K req/day
-- **Basic**: 500 req/min, 10K req/hour, 100K req/day  
+- **Basic**: 500 req/min, 10K req/hour, 100K req/day
 - **Premium**: 1K req/min, 50K req/hour, 1M req/day
 - **Enterprise**: 5K req/min, 200K req/hour, 10M req/day
 
@@ -232,7 +237,7 @@ public-api/
 # Unit tests
 pytest tests/unit/
 
-# Integration tests  
+# Integration tests
 pytest tests/integration/
 
 # Security tests
@@ -351,7 +356,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ### Available MCP Tools
 
 - **rocketgraph_authenticate** - Authenticate with XGT
-- **rocketgraph_query** - Execute Cypher queries  
+- **rocketgraph_query** - Execute Cypher queries
 - **rocketgraph_schema** - Get graph schemas
 - **rocketgraph_list_graphs** - List available graphs
 - **rocketgraph_frame_data** - Get sample data
@@ -386,7 +391,7 @@ Prometheus metrics available at `:9090/metrics` (configurable):
 
 - Request rates and latencies
 - Error rates by endpoint
-- Rate limiting violations  
+- Rate limiting violations
 - Business metrics (queries, graphs, etc.)
 - MCP session metrics and usage
 
@@ -410,3 +415,4 @@ Copyright 2024-2025 Trovares Inc. dba Rocketgraph. All rights reserved.
 - **Documentation**: See `docs/` directory
 - **Issues**: Open an issue in the repository
 - **Security**: Report security issues privately to security@rocketgraph.com
+
