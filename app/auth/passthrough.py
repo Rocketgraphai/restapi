@@ -87,10 +87,45 @@ class XGTCredentials:
 
     @staticmethod
     def _derive_fernet_key(secret_key: str) -> bytes:
-        """Derive a valid Fernet key from any string."""
-        # Use SHA256 to create a 32-byte key, then base64 encode it
-        key_hash = hashlib.sha256(secret_key.encode()).digest()
-        return base64.urlsafe_b64encode(key_hash)
+        """
+        Derive a valid Fernet key from secret using PBKDF2-HMAC-SHA256.
+
+        Uses PBKDF2 (Password-Based Key Derivation Function 2) with:
+        - 600,000 iterations (OWASP 2023 recommendation for PBKDF2-SHA256)
+        - Fixed salt derived from application context (not security-critical as SECRET_KEY should be strong)
+        - HMAC-SHA256 for key stretching
+
+        This provides defense-in-depth even if SECRET_KEY has lower entropy than ideal.
+        For production, SECRET_KEY should still be cryptographically random (32+ bytes).
+
+        Args:
+            secret_key: The SECRET_KEY from application configuration
+
+        Returns:
+            32-byte Fernet-compatible key (base64url-encoded)
+
+        Security Notes:
+            - PBKDF2 iterations make brute-force attacks computationally expensive
+            - Fixed salt is acceptable here since SECRET_KEY should be unique per deployment
+            - Key derivation is deterministic (same SECRET_KEY = same Fernet key)
+        """
+        # Fixed salt derived from application context
+        # Not security-critical since SECRET_KEY should be strong and unique per deployment
+        # Salt prevents rainbow table attacks if SECRET_KEY is reused across applications
+        salt = b"rocketgraph.xgt.credentials.v1"
+
+        # Use PBKDF2-HMAC-SHA256 with 600,000 iterations (OWASP 2023 recommendation)
+        # This makes brute-force attacks on weak keys significantly more expensive
+        key_bytes = hashlib.pbkdf2_hmac(
+            hash_name="sha256",
+            password=secret_key.encode("utf-8"),
+            salt=salt,
+            iterations=600_000,  # OWASP recommendation as of 2023
+            dklen=32,  # 32 bytes = 256 bits for Fernet
+        )
+
+        # Fernet requires base64url-encoded 32-byte key
+        return base64.urlsafe_b64encode(key_bytes)
 
     @property
     def username(self) -> Optional[str]:

@@ -132,13 +132,78 @@ class Settings(BaseSettings):
     def validate_production_security(self):
         """Validate security settings in production."""
         if self.ENVIRONMENT == "production":
+            # Validate SECRET_KEY strength
             if self.SECRET_KEY.startswith("dev-"):
                 raise ValueError("Production environment requires a secure SECRET_KEY (not dev default)")
+            if len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "Production SECRET_KEY must be at least 32 characters long. "
+                    "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            self._validate_key_entropy(self.SECRET_KEY, "SECRET_KEY")
+
+            # Validate API_KEY_SALT strength
             if self.API_KEY_SALT.startswith("dev-"):
                 raise ValueError("Production environment requires a secure API_KEY_SALT (not dev default)")
+            if len(self.API_KEY_SALT) < 32:
+                raise ValueError(
+                    "Production API_KEY_SALT must be at least 32 characters long. "
+                    "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+
+            # Validate JWT_SECRET_KEY strength
             if self.JWT_SECRET_KEY.startswith("dev-"):
                 raise ValueError("Production environment requires a secure JWT_SECRET_KEY (not dev default)")
+            if len(self.JWT_SECRET_KEY) < 32:
+                raise ValueError(
+                    "Production JWT_SECRET_KEY must be at least 32 characters long. "
+                    "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            self._validate_key_entropy(self.JWT_SECRET_KEY, "JWT_SECRET_KEY")
+
         return self
+
+    @staticmethod
+    def _validate_key_entropy(key: str, key_name: str) -> None:
+        """
+        Validate that a cryptographic key has sufficient entropy.
+
+        Performs basic entropy checks to detect weak keys:
+        - Checks for repeated characters
+        - Validates character set diversity
+        - Detects sequential patterns
+
+        Args:
+            key: The key to validate
+            key_name: Name of the key (for error messages)
+
+        Raises:
+            ValueError: If key appears to have insufficient entropy
+        """
+        # Check for excessive repeated characters (possible weak key indicator)
+        if len(set(key)) < len(key) / 4:  # Less than 25% unique characters
+            raise ValueError(
+                f"{key_name} appears to have low entropy (too many repeated characters). "
+                "Use a cryptographically random key generator."
+            )
+
+        # Check for all-lowercase or all-uppercase (indicates not using full character set)
+        if key.isalpha() and (key.islower() or key.isupper()):
+            raise ValueError(
+                f"{key_name} should use mixed case and special characters for better entropy. "
+                "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+
+        # Check for simple sequential patterns (e.g., "abcd", "1234")
+        sequential_count = 0
+        for i in range(len(key) - 2):
+            if ord(key[i + 1]) == ord(key[i]) + 1 and ord(key[i + 2]) == ord(key[i]) + 2:
+                sequential_count += 1
+        if sequential_count > len(key) / 10:  # More than 10% sequential
+            raise ValueError(
+                f"{key_name} contains too many sequential patterns (possible weak key). "
+                "Use a cryptographically random key generator."
+            )
 
     @property
     def is_production(self) -> bool:

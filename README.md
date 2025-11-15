@@ -111,7 +111,9 @@ Key configuration options:
 
 ```bash
 # Security (REQUIRED)
+# Generate cryptographically secure keys for production
 SECRET_KEY=your-super-secure-secret-key
+JWT_SECRET_KEY=your-jwt-secret-key
 API_KEY_SALT=your-api-key-salt
 
 # XGT Database
@@ -120,6 +122,46 @@ XGT_PORT=4367
 XGT_USERNAME=admin
 XGT_PASSWORD=your-password
 ```
+
+### Generating Secure Keys
+
+For production deployment, you **must** generate cryptographically secure keys. The API enforces minimum key requirements:
+
+- **Minimum Length**: 32 characters
+- **Character Diversity**: Mixed case, numbers, and special characters recommended
+- **Entropy Validation**: Keys are checked for weak patterns in production mode
+
+**Generate secure keys:**
+
+```bash
+# Generate SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Generate JWT_SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Generate API_KEY_SALT
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+**Example output:**
+```
+w9fK_2Xp7mN4jH8qL3vZ1sR6tY0uI5oP9aS4dF7gH2jK
+```
+
+Add these to your `.env` file:
+```bash
+SECRET_KEY=w9fK_2Xp7mN4jH8qL3vZ1sR6tY0uI5oP9aS4dF7gH2jK
+JWT_SECRET_KEY=3rT6yU9iO2pA5sD8fG1hJ4kL7zX0cV3bN6mQ9wE2rT5y
+API_KEY_SALT=5gH8jK1lZ4xC7vB0nM3qW6eR9tY2uI5oP8aS1dF4gH7j
+```
+
+**Security Notes:**
+- Never commit secrets to version control
+- Use different keys for each environment (dev, staging, production)
+- Rotate keys periodically (recommended: every 90 days)
+- The API uses PBKDF2-HMAC-SHA256 with 600,000 iterations for credential encryption
+- Production mode enforces strict key validation and will reject weak keys
 
 ## Testing
 
